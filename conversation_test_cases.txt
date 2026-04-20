@@ -1,0 +1,118 @@
+Movie CRS Conversation Test Cases
+
+Purpose:
+Reference-style multi-turn conversations for testing both recommender paths.
+The format follows data/llm_redial/Conversation.txt: numbered conversations
+with User and Agent turns.
+
+Notes:
+- Recommendation turns use the API prompt format: **Title** - reason.
+- Chit-chat, clarification, and closing turns should not produce parsed recommendations.
+- Old-user cases use real LLM-Redial user ids from data/llm_redial/user_ids.json.
+- These are golden-style reference transcripts, not guaranteed byte-for-byte LLM output.
+
+0
+
+Test Case: New user with RAG
+model_type: rag
+user_id: demo-rag-new
+
+User: Hi, I'm in the mood for something cozy. I recently watched White Christmas and really liked the warm music and family feeling.
+
+Agent: That sounds like a lovely watch. White Christmas has that easy charm where the songs, performances, and holiday mood all work together.
+
+User: Could you recommend something with that same light, older-movie comfort?
+
+Agent: **Never a Dull Moment [VHS]** - It has an old-school comedy setup and a playful mistaken-identity story that should fit your lighter mood.
+
+User: That sounds fun. Is it more silly or more sentimental?
+
+Agent: It leans more silly than sentimental, with a breezy comedy rhythm and a gangster mix-up premise rather than a big emotional arc.
+
+User: Nice. Give me one more option, but keep it family-friendly.
+
+Agent: **Monsters, Inc.** - It is playful, warm, and family-friendly, with enough heart to match the comfort-watch feeling you liked.
+
+User: Great, thanks. I will try one of those tonight.
+
+Agent: You're welcome. Hope you have a relaxed movie night.
+
+1
+
+Test Case: Existing LLM-Redial user with RAG
+model_type: rag
+user_id: A2NBOL825B93OM
+known profile hints: liked The Bourne Identity, Master and Commander: The Far Side of the World, The Lord of the Rings: The Fellowship of the Ring; disliked Driven VHS and Darkness Falls VHS.
+
+User: I want something exciting, but not as ridiculous as Driven. I liked The Bourne Identity because it stayed tense without feeling dumb.
+
+Agent: I get that. You seem to prefer momentum and craft over noisy action for its own sake.
+
+User: Can you recommend something that fits that?
+
+Agent: **The Lord of the Rings: The Return of the King** - It keeps the scale and adventure high while giving the action real emotional weight.
+
+User: I already liked Fellowship, so that makes sense. Is it more fantasy than action?
+
+Agent: Yes, it is fantasy first, but the action is large and purposeful. If you liked Fellowship's world-building, this is the bigger, more conclusive version of that experience.
+
+User: What if I want something stranger and darker, but not cheap horror?
+
+Agent: **Donnie Darko** - It is darker and more mysterious without leaning on the kind of shallow scares you disliked in Darkness Falls VHS.
+
+User: Good. That is enough for now, thanks.
+
+Agent: You're welcome. Enjoy whichever one you pick.
+
+2
+
+Test Case: New user with Agent
+model_type: agent
+user_id: demo-agent-new
+
+User: Hey, I just watched The Screaming Skull and the print quality was awful. The acting felt grade Z too.
+
+Agent: That sounds frustrating. Some older horror releases can be fun in the right mood, but a bad print and flat acting can make the whole thing feel like work.
+
+User: I still want something eerie, just better made. Any ideas?
+
+Agent: **The Shining** - It is a polished, atmospheric horror film with a slow-burn sense of dread instead of cheap-looking shocks.
+
+User: I like slow-burn horror, but I do not want anything too confusing.
+
+Agent: **Stir Of Echoes** - It keeps the supernatural mystery grounded and tense, with a clearer emotional thread than more abstract horror.
+
+User: Is that closer to ghost story or slasher?
+
+Agent: It is much closer to a ghost story. The tension comes from unease, visions, and buried secrets rather than a masked-killer setup.
+
+User: Perfect. Thanks, goodbye.
+
+Agent: Goodbye, and enjoy the movie.
+
+3
+
+Test Case: Existing LLM-Redial user with Agent
+model_type: agent
+user_id: AQP1VPK16SVWM
+known profile hints: liked Stir Of Echoes, Quatermass &amp; The Pit VHS, The Incredibles (Mandarin Chinese Edition), The Three Musketeers/The Four Musketeers VHS; disliked Apollo 18, Primer, Eraserhead, The Colony.
+
+User: I want something suspenseful, but please avoid anything like Apollo 18 or Primer. I did not enjoy those.
+
+Agent: That helps. You seem to enjoy eerie or adventurous stories more when they have momentum and do not get too opaque.
+
+User: Can you recommend one movie from that angle?
+
+Agent: **Stir Of Echoes** - It fits your taste for supernatural suspense while staying more direct and emotionally grounded than Apollo 18 or Primer.
+
+User: I already liked that one. Give me a different direction but still with mystery.
+
+Agent: **Quatermass &amp; The Pit VHS** - It should work if you want older sci-fi mystery with atmosphere and investigation rather than found-footage frustration.
+
+User: What if I want something lighter after that?
+
+Agent: **The Incredibles (Mandarin Chinese Edition)** - It gives you adventure and energy in a lighter package, which matches the brighter side of your profile.
+
+User: Great. That gives me a nice mix. Thanks.
+
+Agent: You're welcome. Hope one of those fits the night.

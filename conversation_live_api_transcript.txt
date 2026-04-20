@@ -1,0 +1,159 @@
+Movie CRS Live API Conversation Transcript
+
+Source: conversation_live_api_responses.txt
+Content: exact response_text values returned by the live API, formatted as User/Agent turns.
+
+0
+
+Test Case: New user with RAG
+model_type: rag
+user_id: demo-rag-new
+
+Turn 1
+User: Hi, I'm in the mood for something cozy. I recently watched White Christmas and really liked the warm music and family feeling.
+Agent: That sounds lovely! "White Christmas" really captures that cozy, festive spirit. If you're looking for more movies with a similar warm vibe, I can suggest a few.
+Recommendations: []
+
+Turn 2
+User: Could you recommend something with that same light, older-movie comfort?
+Agent: **The Unbearable Lightness of Being** - it has a warm, introspective feel that might resonate with your love for cozy films.
+Recommendations: The Unbearable Lightness of Being
+
+Turn 3
+User: That sounds fun. Is it more silly or more sentimental?
+Agent: It's definitely more sentimental! It has a lovely, introspective quality that makes you reflect on love and relationships, while still keeping a warm, cozy vibe. I think you'll enjoy the emotional depth it brings.
+Recommendations: []
+
+Turn 4
+User: Nice. Give me one more option, but keep it family-friendly.
+Agent: **The Family Man** - it's a heartwarming story about family and second chances, perfect for that cozy, sentimental vibe you're looking for!
+Recommendations: The Family Man
+
+Turn 5
+User: Great, thanks. I will try one of those tonight.
+Agent: You're welcome! I hope you enjoy whichever movie you choose tonight. Have a cozy viewing experience!
+Recommendations: []
+
+1
+
+Test Case: Existing LLM-Redial user with RAG
+model_type: rag
+user_id: A2NBOL825B93OM
+known profile hints: liked The Bourne Identity, Master and Commander: The Far Side of the World, The Lord of the Rings: The Fellowship of the Ring; disliked Driven VHS and Darkness Falls VHS.
+
+Turn 1
+User: I want something exciting, but not as ridiculous as Driven. I liked The Bourne Identity because it stayed tense without feeling dumb.
+Agent: **The Bourne Legacy** - It continues the thrilling action and tension of "The Bourne Identity" while introducing new characters and storylines.  
+**The Jason Bourne Collection (The Bourne Identity / The Bourne Supremacy / The Bourne Ultimatum)** - This set includes the first three films, maintaining that intense atmosphere you enjoyed without veering into ridiculous territory.
+Recommendations: The Bourne Legacy, The Jason Bourne Collection (The Bourne Identity / The Bourne Supremacy / The Bourne Ultimatum)
+
+Turn 2
+User: Can you recommend something that fits that?
+Agent: **The Bourne Legacy** - It continues the thrilling action and tension of "The Bourne Identity" while introducing new characters and storylines.  
+**The Jason Bourne Collection (The Bourne Identity / The Bourne Supremacy / The Bourne Ultimatum)** - This set includes the first three films, maintaining that intense atmosphere you enjoyed without veering into ridiculous territory.
+Recommendations: The Bourne Legacy, The Jason Bourne Collection (The Bourne Identity / The Bourne Supremacy / The Bourne Ultimatum)
+
+Turn 3
+User: I already liked Fellowship, so that makes sense. Is it more fantasy than action?
+Agent: It's definitely more of a fantasy film, with rich lore and character development, but it still has plenty of action, especially in the battle scenes. If you enjoyed "The Fellowship of the Ring," you might appreciate the balance it strikes between the two genres!
+Recommendations: []
+
+Turn 4
+User: What if I want something stranger and darker, but not cheap horror?
+Agent: **Masters of Horror: Imprint** - It offers a unique and unsettling narrative that strays into darker themes without relying on cheap horror tropes.  
+**Dread: After Dark Horrorfest 4** - This film explores psychological horror with a thought-provoking storyline that dives into darker concepts.
+Recommendations: Masters of Horror: Imprint, Dread: After Dark Horrorfest 4
+
+Turn 5
+User: Good. That is enough for now, thanks.
+Agent: You're welcome! If you ever want more recommendations or want to chat about movies, just let me know. Enjoy your day!
+Recommendations: []
+
+2
+
+Test Case: New user with Agent
+model_type: agent
+user_id: demo-agent-new
+
+Turn 1
+User: Hey, I just watched The Screaming Skull and the print quality was awful. The acting felt grade Z too.
+Agent: I totally get that! "The Screaming Skull" has been criticized for its low-quality production and acting. It's frustrating when a movie doesn't live up to expectations.
+Recommendations: []
+
+Turn 2
+User: I still want something eerie, just better made. Any ideas?
+Agent: Here are some eerie films that are better made:
+
+**Lake Eerie** - A haunting story set by a mysterious lake with an unsettling atmosphere.  
+**Paranormal Activity** - A modern classic that masterfully builds suspense and dread.  
+**Paranormal Activity 3** - A chilling prequel that dives into the origins of the haunting.  
+
+Hope you find one you enjoy!
+Recommendations: Lake Eerie, Paranormal Activity, Paranormal Activity 3
+
+Turn 3
+User: I like slow-burn horror, but I do not want anything too confusing.
+Agent: Here are some slow-burn horror films that aren't too confusing:
+
+**The Witch** - A chilling tale of a family unraveling in the face of dark forces in the woods.  
+**Hereditary** - A gripping story that slowly builds tension around family secrets and loss.  
+**The Invitation** - A suspenseful film that unfolds gradually, creating an unsettling atmosphere at a dinner party.  
+
+I hope you find these to your liking!
+Recommendations: The Witch, Hereditary, The Invitation
+
+Turn 4
+User: Is that closer to ghost story or slasher?
+Agent: Those recommendations lean more towards ghost stories and psychological horror rather than slasher films. If you're looking for something specific in either category, let me know!
+Recommendations: []
+
+Turn 5
+User: Perfect. Thanks, goodbye.
+Agent: You're welcome! If you ever need more recommendations or want to chat about movies, feel free to come back. Have a great day!
+Recommendations: []
+
+3
+
+Test Case: Existing LLM-Redial user with Agent
+model_type: agent
+user_id: AQP1VPK16SVWM
+known profile hints: liked Stir Of Echoes, Quatermass &amp; The Pit VHS, The Incredibles (Mandarin Chinese Edition), The Three Musketeers/The Four Musketeers VHS; disliked Apollo 18, Primer, Eraserhead, The Colony.
+
+Turn 1
+User: I want something suspenseful, but please avoid anything like Apollo 18 or Primer. I did not enjoy those.
+Agent: Here are some suspenseful movies you might enjoy:
+
+**Sudden Fear** - A gripping thriller about a successful playwright who becomes suspicious of her husband.
+
+**Bereavement** - A chilling story that follows a young girl who becomes embroiled in a horrifying crime.
+
+**Assassination Games** - A suspenseful action thriller featuring two assassins who must navigate a dangerous game of survival.
+Recommendations: Sudden Fear, Bereavement, Assassination Games
+
+Turn 2
+User: Can you recommend one movie from that angle?
+Agent: I recommend:
+
+**Sudden Fear** - A gripping thriller about a successful playwright who becomes suspicious of her husband. 
+
+I think you'll find it suspenseful without the elements you disliked in other films!
+Recommendations: Sudden Fear
+
+Turn 3
+User: I already liked that one. Give me a different direction but still with mystery.
+Agent: Here's another mystery movie you might enjoy:
+
+**Mystery Train** - A fascinating tale that intertwines the lives of different characters in a Memphis hotel, filled with suspense and intrigue.
+Recommendations: Mystery Train
+
+Turn 4
+User: What if I want something lighter after that?
+Agent: Here's a lighter movie you might enjoy:
+
+**Funny Face** - A charming romantic comedy featuring Audrey Hepburn and Fred Astaire, filled with lovely music and delightful moments.
+Recommendations: Funny Face
+
+Turn 5
+User: Great. That gives me a nice mix. Thanks.
+Agent: You're welcome! I'm glad you liked the mix. Enjoy your movies, and feel free to reach out if you need more recommendations in the future!
+Recommendations: []
