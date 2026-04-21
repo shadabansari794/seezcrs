@@ -20,6 +20,7 @@ class MovieDataLoader:
         conversations_jsonl_path: Optional[str] = None,
         conversations_txt_path: Optional[str] = None,
         user_ids_path: Optional[str] = None,
+        tmdb_enriched_path: Optional[str] = None,
         data_path: Optional[str] = None  # Backward compatibility
     ):
         """
@@ -30,12 +31,14 @@ class MovieDataLoader:
             conversations_jsonl_path: Path to final_data.jsonl
             conversations_txt_path: Path to Conversation.txt
             user_ids_path: Path to user_ids.json (Amazon user_id -> index)
+            tmdb_enriched_path: Optional path to TMDB enrichment JSON
             data_path: Legacy path (for backward compatibility)
         """
         self.item_map_path = item_map_path
         self.conversations_jsonl_path = conversations_jsonl_path
         self.conversations_txt_path = conversations_txt_path
         self.user_ids_path = user_ids_path
+        self.tmdb_enriched_path = tmdb_enriched_path
         self.data_path = data_path
 
         self.movies: List[Dict[str, Any]] = []
@@ -43,6 +46,9 @@ class MovieDataLoader:
         self.item_map: Dict[str, str] = {}
         self.user_ids: Dict[str, int] = {}
         self.user_data: Dict[str, Dict[str, Any]] = {}
+        self.tmdb_enriched_data: Dict[str, Dict[str, Any]] = {}
+        self.known_directors: set[str] = set()
+        self.known_cast: set[str] = set()
         
     def load_movies(self) -> List[Dict[str, Any]]:
         """
@@ -77,6 +83,7 @@ class MovieDataLoader:
             self.item_map = json.load(f)
         
         logger.info(f"Loaded {len(self.item_map)} movies from item_map")
+        self.tmdb_enriched_data = self._load_tmdb_enrichment()
         
         # Convert to movie list with metadata
         movies = []
@@ -92,9 +99,11 @@ class MovieDataLoader:
                 "director": None,
                 "cast": []
             }
+            self._merge_tmdb_metadata(movie, self.tmdb_enriched_data.get(item_id))
             movies.append(movie)
         
         self.movies = movies
+        self._build_people_index()
 
         # Load conversations if available
         if self.conversations_jsonl_path and Path(self.conversations_jsonl_path).exists():
@@ -105,6 +114,72 @@ class MovieDataLoader:
             self.load_user_ids()
 
         return movies
+
+    def _load_tmdb_enrichment(self) -> Dict[str, Dict[str, Any]]:
+        """Load optional TMDB enrichment keyed by LLM-Redial item id."""
+        candidate_paths: List[Path] = []
+        if self.tmdb_enriched_path:
+            candidate_paths.append(Path(self.tmdb_enriched_path))
+        if self.item_map_path:
+            candidate_paths.append(Path(self.item_map_path).with_name("tmdb_enriched_movies.json"))
+
+        for path in candidate_paths:
+            if not path.exists():
+                continue
+
+            logger.info(f"Loading TMDB enrichment from {path}")
+            with open(path, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+
+            if isinstance(raw, list):
+                enriched = {
+                    str(item.get("id")): item
+                    for item in raw
+                    if isinstance(item, dict) and item.get("id")
+                }
+            else:
+                enriched = {
+                    str(item_id): item
+                    for item_id, item in raw.items()
+                    if isinstance(item, dict)
+                }
+
+            usable = sum(1 for item in enriched.values() if item.get("tmdb_id"))
+            logger.info(f"Loaded TMDB enrichment for {usable}/{len(enriched)} records")
+            return enriched
+
+        logger.info("No TMDB enrichment file found; using LLM-Redial title/genre fields only")
+        return {}
+
+    def _merge_tmdb_metadata(self, movie: Dict[str, Any], enriched: Optional[Dict[str, Any]]) -> None:
+        """Merge useful TMDB fields into a movie record when available."""
+        if not enriched or not enriched.get("tmdb_id"):
+            return
+
+        movie["tmdb_id"] = enriched.get("tmdb_id")
+        movie["tmdb_title"] = enriched.get("title")
+        movie["original_title"] = enriched.get("original_title")
+        movie["year"] = enriched.get("year")
+        movie["release_date"] = enriched.get("release_date")
+        movie["genres"] = enriched.get("genres") or movie.get("genres") or []
+        movie["overview"] = enriched.get("overview")
+        movie["description"] = enriched.get("overview") or movie.get("description")
+        movie["keywords"] = enriched.get("keywords") or []
+        movie["director"] = enriched.get("director") or []
+        movie["cast"] = enriched.get("cast") or []
+
+    def _build_people_index(self) -> None:
+        """Collect lowercased full-name sets for director/actor filter extraction."""
+        for movie in self.movies:
+            for name in movie.get("director") or []:
+                if name:
+                    self.known_directors.add(name.lower())
+            for name in movie.get("cast") or []:
+                if name:
+                    self.known_cast.add(name.lower())
+        logger.info(
+            f"People index built: directors={len(self.known_directors)} cast={len(self.known_cast)}"
+        )
 
     def load_user_ids(self) -> Dict[str, int]:
         """Load user_ids.json into self.user_ids."""

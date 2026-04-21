@@ -1,51 +1,92 @@
-"""LangGraph construction for the agent recommender."""
+"""LangGraph construction for the structured agent recommender.
 
-from typing import Any, List
+Flow:
+
+                       classify_intent
+                      /              \\
+           (recommend)                (chat | clarify | closing)
+                |                                |
+       extract_preferences                  chat_reply ──▶ END
+                |
+             retrieve
+                |
+            rank_score
+                |
+             explain ──▶ END
+"""
+
+from __future__ import annotations
+
 import logging
+from typing import Any, Callable, Dict
 
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode
+from langgraph.graph import END, StateGraph
 
-from models.agent.state import AgentState
+from models.agent.state import (
+    INTENT_CHAT,
+    INTENT_CLARIFY,
+    INTENT_CLOSING,
+    INTENT_RECOMMEND,
+    AgentState,
+)
 
 logger = logging.getLogger(__name__)
 
 
-def create_agent_graph(llm_with_tools: Any, tools: List[Any]) -> Any:
-    """Create and compile the tool-calling agent graph."""
+def _route_from_intent(state: AgentState) -> str:
+    intent = state.get("intent") or INTENT_RECOMMEND
+    if intent == INTENT_RECOMMEND:
+        return "extract_preferences"
+    return "chat_reply"
+
+
+def create_agent_graph(nodes: Dict[str, Callable]) -> Any:
+    """Compile the structured recommendation graph from a node dict.
+
+    ``nodes`` must contain: classify_intent, extract_preferences, retrieve,
+    rank_score, explain, chat_reply — as produced by ``build_nodes``.
+    """
+    required = {
+        "classify_intent",
+        "extract_preferences",
+        "retrieve",
+        "rank_score",
+        "explain",
+        "chat_reply",
+    }
+    missing = required - set(nodes)
+    if missing:
+        raise ValueError(f"create_agent_graph missing nodes: {sorted(missing)}")
+
     workflow = StateGraph(AgentState)
 
-    def agent_node(state: AgentState) -> AgentState:
-        """Run the LLM reasoning step."""
-        messages = state["messages"]
-        logger.info(f"[Agent] node=agent messages_in={len(messages)}")
-        response = llm_with_tools.invoke(messages)
-        tool_calls = getattr(response, "tool_calls", None) or []
-        if tool_calls:
-            names = [tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "?") for tc in tool_calls]
-            logger.info(f"[Agent] LLM requested {len(tool_calls)} tool call(s): {names}")
-        else:
-            logger.info(f"[Agent] LLM returned final content len={len(getattr(response, 'content', '') or '')}")
-        return {"messages": [response]}
+    workflow.add_node("classify_intent", nodes["classify_intent"])
+    workflow.add_node("extract_preferences", nodes["extract_preferences"])
+    workflow.add_node("retrieve", nodes["retrieve"])
+    workflow.add_node("rank_score", nodes["rank_score"])
+    workflow.add_node("explain", nodes["explain"])
+    workflow.add_node("chat_reply", nodes["chat_reply"])
 
-    def should_continue(state: AgentState) -> str:
-        """Route to tools when the last LLM message requested tool calls."""
-        last_message = state["messages"][-1]
-        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-            return "tools"
-        return END
+    workflow.set_entry_point("classify_intent")
 
-    workflow.add_node("agent", agent_node)
-    workflow.add_node("tools", ToolNode(tools))
-    workflow.set_entry_point("agent")
     workflow.add_conditional_edges(
-        "agent",
-        should_continue,
+        "classify_intent",
+        _route_from_intent,
         {
-            "tools": "tools",
-            END: END,
+            "extract_preferences": "extract_preferences",
+            "chat_reply": "chat_reply",
         },
     )
-    workflow.add_edge("tools", "agent")
 
+    workflow.add_edge("extract_preferences", "retrieve")
+    workflow.add_edge("retrieve", "rank_score")
+    workflow.add_edge("rank_score", "explain")
+    workflow.add_edge("explain", END)
+    workflow.add_edge("chat_reply", END)
+
+    logger.info(
+        "[Agent.graph] compiled nodes=%s entry=classify_intent intents=%s",
+        sorted(required),
+        [INTENT_CHAT, INTENT_RECOMMEND, INTENT_CLARIFY, INTENT_CLOSING],
+    )
     return workflow.compile()

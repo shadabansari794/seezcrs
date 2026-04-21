@@ -1,7 +1,7 @@
 """
 Vector store utilities for movie retrieval in RAG-based CRS.
 """
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import logging
 from pathlib import Path
 
@@ -83,6 +83,10 @@ class MovieVectorStore:
     def _create_movie_text(self, movie: Dict[str, Any]) -> str:
         """
         Create searchable text representation of a movie.
+
+        The base LLM-Redial catalog provides title and inferred genres. When
+        TMDB enrichment is available, this also includes overview, keywords,
+        director, cast, and year to make semantic retrieval much richer.
         
         Args:
             movie: Movie dictionary
@@ -90,13 +94,27 @@ class MovieVectorStore:
         Returns:
             Text representation for embedding
         """
-        parts = [
-            f"Title: {movie.get('title', '')}",
-            f"Genres: {', '.join(movie.get('genres', []))}",
-            f"Description: {movie.get('description', '')}",
-            f"Director: {movie.get('director', '')}",
-            f"Cast: {', '.join(movie.get('cast', [])[:3])}"  # Top 3 actors
+        def join_values(value: Any, limit: Optional[int] = None) -> str:
+            values = value if isinstance(value, list) else [value]
+            values = [str(item) for item in values[:limit] if item]
+            return ", ".join(values)
+
+        title = movie.get("title") or ""
+        overview = movie.get("overview") or movie.get("description")
+        if overview == f"Movie: {title}":
+            overview = None
+
+        fields = [
+            ("Title", movie.get("title")),
+            ("Year", movie.get("year")),
+            ("Genres", join_values(movie.get("genres") or [])),
+            ("Overview", overview),
+            ("Keywords", join_values(movie.get("keywords") or [], limit=12)),
+            ("Director", join_values(movie.get("director") or [])),
+            ("Cast", join_values(movie.get("cast") or [], limit=5)),
         ]
+
+        parts = [f"{label}: {value}" for label, value in fields if value]
         return " | ".join(parts)
     
     def index_movies(self, movies: List[Dict[str, Any]]) -> None:
@@ -131,9 +149,12 @@ class MovieVectorStore:
             metadatas = [
                 {
                     "title": movie.get("title", ""),
-                    "year": str(movie.get("year", "")),
+                    "year": str(movie.get("year") or ""),
                     "genres": ",".join(movie.get("genres", [])),
-                    "rating": str(movie.get("rating", "")),
+                    "overview": movie.get("overview") or "",
+                    "keywords": ",".join(movie.get("keywords") or []),
+                    "director": ",".join(movie.get("director") or []) if isinstance(movie.get("director"), list) else str(movie.get("director") or ""),
+                    "cast": ",".join(movie.get("cast") or []),
                 }
                 for movie in movies
             ]
@@ -161,17 +182,28 @@ class MovieVectorStore:
         query: str,
         top_k: int = 5,
         genre: Optional[str] = None,
+        year: Optional[int] = None,
+        year_range: Optional[Tuple[int, int]] = None,
+        director: Optional[str] = None,
+        actor: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Semantic search with an optional genre filter.
+        Semantic search with optional metadata filters.
 
-        Genres are stored on each Chroma record as a comma-joined string, so we
-        over-fetch from the dense index (top_k * 4) and narrow in Python.
+        We over-fetch from the dense index (top_k * 4) and narrow in Python,
+        because array-like TMDB fields (genres/director/cast) are stored as
+        comma-joined strings in Chroma metadata. Filters are ANDed. If the
+        combined filter eliminates every candidate we fall back to the
+        unfiltered top-K so the LLM always has something to reason over.
 
         Args:
             query: Search query
             top_k: Number of results to return after filtering
             genre: Case-insensitive substring match against movie genres
+            year: Exact TMDB year match
+            year_range: Inclusive (start, end) year range
+            director: Case-insensitive full-name substring match in director list
+            actor: Case-insensitive full-name substring match in cast list
 
         Returns:
             List of movie dictionaries (up to top_k)
@@ -195,7 +227,13 @@ class MovieVectorStore:
                 candidates.append({
                     "id": results["ids"][0][i],
                     "title": metadata.get("title", ""),
+                    "year": metadata.get("year") or None,
                     "genres": metadata.get("genres", "").split(",") if metadata.get("genres") else [],
+                    "overview": metadata.get("overview", ""),
+                    "description": metadata.get("overview", ""),
+                    "keywords": metadata.get("keywords", "").split(",") if metadata.get("keywords") else [],
+                    "director": metadata.get("director", "").split(",") if metadata.get("director") else [],
+                    "cast": metadata.get("cast", "").split(",") if metadata.get("cast") else [],
                     "distance": results["distances"][0][i],
                 })
         else:
@@ -214,10 +252,28 @@ class MovieVectorStore:
             candidates.sort(key=lambda x: x["similarity"], reverse=True)
             candidates = candidates[:fetch_k]
 
-        filtered = [m for m in candidates if self._passes_genre_filter(m, genre)]
+        filters_active = any(f is not None for f in (genre, year, year_range, director, actor))
+        filtered = [
+            m for m in candidates
+            if self._passes_genre_filter(m, genre)
+            and self._passes_year_filter(m, year, year_range)
+            and self._passes_person_filter(m.get("director"), director)
+            and self._passes_person_filter(m.get("cast"), actor)
+        ]
 
-        if genre and len(filtered) < top_k:
-            logger.warning(f"Only {len(filtered)}/{top_k} movies passed genre filter (genre={genre})")
+        if filters_active and not filtered:
+            logger.warning(
+                "All candidates filtered out (genre=%s year=%s year_range=%s director=%s actor=%s); "
+                "falling back to unfiltered top-K",
+                genre, year, year_range, director, actor,
+            )
+            return candidates[:top_k]
+
+        if filters_active and len(filtered) < top_k:
+            logger.warning(
+                "Only %d/%d movies passed filters (genre=%s year=%s year_range=%s director=%s actor=%s)",
+                len(filtered), top_k, genre, year, year_range, director, actor,
+            )
 
         return filtered[:top_k]
 
@@ -228,6 +284,42 @@ class MovieVectorStore:
             return True
         genres_lower = [g.lower() for g in movie.get("genres") or []]
         return any(genre.lower() in g for g in genres_lower)
+
+    @staticmethod
+    def _passes_year_filter(
+        movie: Dict[str, Any],
+        year: Optional[int],
+        year_range: Optional[Tuple[int, int]],
+    ) -> bool:
+        """Year filter. Movies without a known year fail when a filter is active."""
+        if year is None and year_range is None:
+            return True
+        raw = movie.get("year")
+        try:
+            movie_year = int(raw) if raw not in (None, "") else None
+        except (TypeError, ValueError):
+            movie_year = None
+        if movie_year is None:
+            return False
+        if year is not None and movie_year != year:
+            return False
+        if year_range is not None and not (year_range[0] <= movie_year <= year_range[1]):
+            return False
+        return True
+
+    @staticmethod
+    def _passes_person_filter(people: Any, needle: Optional[str]) -> bool:
+        """Case-insensitive substring match of ``needle`` against a name list/string."""
+        if not needle:
+            return True
+        if isinstance(people, list):
+            names = [str(p).lower() for p in people if p]
+        elif isinstance(people, str):
+            names = [p.strip().lower() for p in people.split(",") if p.strip()]
+        else:
+            return False
+        needle_lower = needle.lower()
+        return any(needle_lower in name for name in names)
     
     def get_collection_stats(self) -> Dict[str, Any]:
         """Get statistics about the vector store."""

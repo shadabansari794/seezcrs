@@ -148,21 +148,22 @@ keyed by `user_id`.
 
 ### 4. Generate With Agent
 
-[models/agent/recommender.py](models/agent/recommender.py) coordinates the
-LangGraph path:
+[models/agent/recommender.py](models/agent/recommender.py) coordinates a
+structured LangGraph pipeline. `classify_intent` (LLM, temperature=0) routes
+each turn to one of two branches:
 
-1. Build system, history, and current-user messages with [models/agent/messages.py](models/agent/messages.py).
-2. Run the graph from [models/agent/graph.py](models/agent/graph.py).
-3. Let the LLM call tools from [models/agent/tools.py](models/agent/tools.py) when recommendation mode needs search or profile data.
-4. Return the final assistant message.
+- **Chit-chat / clarify / closing** → `chat_reply` node → END.
+- **Recommend** → `extract_preferences` → `retrieve` → `rank_score` → `explain` → END.
+
+Stage details:
+
+1. [models/agent/intent.py](models/agent/intent.py) — LLM picks `recommend | chat | clarify | closing`.
+2. [models/agent/nodes.py](models/agent/nodes.py) — `extract_preferences` pulls filters via [models/rag/filters.py](models/rag/filters.py) and user history via the loader; `retrieve` hits Chroma through the vector store.
+3. [models/agent/ranking.py](models/agent/ranking.py) — heuristic `score_candidates`: similarity + history affinity (liked director/genre overlap) − negative signal (disliked titles) + recency.
+4. `explain` calls the main LLM with the ranked shortlist to produce `**Title** - reason` recommendations.
 5. Parse recommendations with the shared RAG parser.
 
-Agent tools:
-
-- `search_movies(query, top_k, genre=None)`: semantic search with optional genre filter.
-- `get_movie_details(title)`: exact title lookup.
-- `filter_by_genre(genre, top_k)`: catalog scan over inferred genres.
-- `get_user_history(user_id)`: dataset-side likes, dislikes, and historical sample.
+The graph is assembled in [models/agent/graph.py](models/agent/graph.py) from nodes built in [models/agent/nodes.py](models/agent/nodes.py).
 
 ### 5. Persist and Respond
 
@@ -266,6 +267,56 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 First boot indexes the 9,687-title catalog into `data/vector_store/`. Later
 boots reuse the persisted Chroma index.
+
+## Optional TMDB Enrichment
+
+The base LLM-Redial catalog is sparse, so the app can optionally enrich movies
+with TMDB metadata. Enrichment adds real genres, overview, keywords, director,
+cast, release date, and year.
+
+Set one TMDB credential in `.env`:
+
+```env
+TMDB_ACCESS_TOKEN=...
+# or
+TMDB_API_KEY=...
+```
+
+Test one movie:
+
+```bash
+python scripts/test_tmdb_lookup.py "The Bourne Identity" --year 2002
+```
+
+Enrich the whole catalog (parallel, ~5–10 min for ~9.7k titles on a fast
+network; resumable — re-run anytime to pick up where it stopped):
+
+```bash
+python scripts/enrich_tmdb_catalog.py --workers 16 --retry-misses
+```
+
+Useful flags:
+
+- `--workers N` — concurrent TMDB workers (default `16`). Each worker makes 2
+  sequential calls per movie; 16 workers ≈ 32 in-flight requests.
+- `--clean-titles` / `--no-clean-titles` — strip retail suffixes like `VHS`,
+  `DVD`, `[Blu-ray]`, `Special Edition` before searching TMDB. On by default;
+  falls back to the raw title if the cleaned search returns nothing.
+- `--retry-misses` — re-run rows previously saved with `error`.
+- `--save-every 25` — checkpoint to disk every N completed items (atomic
+  write, safe to Ctrl+C).
+- `--sleep S` — per-worker sleep after each movie (default `0.0`). Retries on
+  429/5xx are handled by the built-in exponential backoff.
+
+The generated file is:
+
+```text
+data/llm_redial/tmdb_enriched_movies.json
+```
+
+The loader automatically merges that file when present. After enrichment,
+delete/rebuild `data/vector_store/` or the Docker `vector-store-data` volume so
+Chroma reindexes movies with the richer text.
 
 ## API
 

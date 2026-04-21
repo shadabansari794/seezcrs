@@ -9,6 +9,7 @@ parsing.
 from typing import Any, Dict, List, Optional, Tuple
 import logging
 
+from langchain_openai import ChatOpenAI
 from openai import AsyncOpenAI
 
 from app.config import settings
@@ -17,6 +18,8 @@ from data.loader import MovieDataLoader
 from prompts.templates import PromptTemplates
 from utils.vector_store import MovieVectorStore
 
+from models.agent.intent import classify_intent
+from models.agent.state import INTENT_RECOMMEND
 from models.response import strip_leaked_mode_label
 from models.rag.filters import extract_filters
 from models.rag.parser import parse_recommendations as parse_recommendations_text
@@ -43,6 +46,13 @@ class RAGRecommender:
         self.movie_loader = movie_loader
         self.prompt_templates = PromptTemplates(few_shot_examples=few_shot_examples)
         self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        # Cheap, deterministic classifier so chit-chat turns skip retrieval.
+        self.llm_intent = ChatOpenAI(
+            model=settings.llm_model,
+            temperature=0,
+            api_key=settings.openai_api_key,
+            max_tokens=8,
+        )
 
     def _build_user_profile_block(self, user_id: Optional[str]) -> Tuple[str, str]:
         """Compatibility wrapper around the profile utility."""
@@ -74,17 +84,26 @@ class RAGRecommender:
             f"max_recs={max_recommendations}"
         )
 
-        profile_text, retrieval_boost = self._build_user_profile_block(user_id)
-        retrieval_query = f"{query} {retrieval_boost}".strip() if retrieval_boost else query
-        filters = extract_filters(query)
-        if filters:
-            logger.info(f"[RAG] extracted filters: {filters}")
+        intent = await classify_intent(self.llm_intent, query, history)
+        logger.info(f"[RAG] intent={intent!r}")
 
-        retrieved_movies = await self._retrieve_relevant_movies(
-            retrieval_query,
-            top_k=max_recommendations * 2,
-            filters=filters,
-        )
+        profile_text, retrieval_boost = self._build_user_profile_block(user_id)
+
+        if intent != INTENT_RECOMMEND:
+            # Chit-chat, clarify, or closing — skip Chroma; the MODE A/C/D branches
+            # in the RAG system prompt handle these fine without a movies block.
+            retrieved_movies: List[Dict[str, Any]] = []
+        else:
+            retrieval_query = f"{query} {retrieval_boost}".strip() if retrieval_boost else query
+            filters = extract_filters(query, loader=self.movie_loader)
+            if filters:
+                logger.info(f"[RAG] extracted filters: {filters}")
+
+            retrieved_movies = await self._retrieve_relevant_movies(
+                retrieval_query,
+                top_k=max_recommendations * 2,
+                filters=filters,
+            )
 
         conv_history = self._format_conversation_history(history)
         if profile_text:

@@ -4,41 +4,46 @@ Prompt templates for conversational movie recommendation.
 Built on LangChain's ChatPromptTemplate so both the RAG and Agent paths share
 the same structured prompt surface:
 
-- **System** messages are injected as literal `SystemMessage` objects (no
-  variable interpolation), which keeps arbitrary content in few-shot dialogues
-  safe from `.format()` collisions with stray `{` / `}` characters.
-- **User** messages are `HumanMessagePromptTemplate`s with named variables
-  (`{conversation_history}`, `{movies_context}`, `{user_query}`, etc.) so call
-  sites just pass kwargs to `.format_messages(...)`.
+- System messages are injected as literal SystemMessage objects.
+- User messages are HumanMessagePromptTemplate objects with named variables.
 
 Optionally, real LLM-Redial dialogues can be attached as few-shot examples.
 """
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
 
-_RAG_SYSTEM_BASE = """You are a friendly, conversational movie assistant. You talk like a human who happens to know a lot about movies — not a search engine.
+_MOVIE_KNOWLEDGE_RULES = """MOVIE KNOWLEDGE:
+- You may use your general movie knowledge to understand the user's taste signals, mentioned movies, actors, genres, pacing, tone, and themes.
+- Example: if the user says they liked The Bourne Identity, infer tense pacing, grounded action, espionage, competence, amnesia/conspiracy stakes, and a smart thriller tone.
+- Use that knowledge to explain why a candidate fits the user.
+- Do not use general knowledge to invent recommendation titles outside the allowed candidate set."""
+
+
+_RAG_SYSTEM_BASE = f"""You are a friendly, conversational movie assistant. You talk like a human who happens to know a lot about movies, not a search engine.
 
 READ THE USER'S INTENT FIRST, THEN CHOOSE A MODE:
 
-MODE A — CHIT-CHAT (greetings, reactions to a movie, opinions, small talk, jokes)
-- Reply naturally in 1–3 short sentences.
+MODE A - CHIT-CHAT (greetings, reactions to a movie, opinions, small talk, jokes)
+- Reply naturally in 1-3 short sentences.
 - Acknowledge what they said; share a brief relevant thought if it fits.
-- Do NOT recommend movies. Do NOT list catalog titles. Do NOT use the `**Title** — reason` format.
+- Do NOT recommend movies. Do NOT list catalog titles. Do NOT use the `**Title** - reason` format.
 
-MODE B — RECOMMENDATION REQUEST (they ask for suggestions, "what should I watch", "any recommendations", describe a mood/genre/actor they want)
-- Pick 1–3 movies from the provided catalog only.
-- Format each pick on its own line:  **Title** — one short sentence on the fit.
+MODE B - RECOMMENDATION REQUEST (they ask for suggestions, "what should I watch", "any recommendations", describe a mood/genre/actor they want)
+- Pick 1-3 movies from the provided catalog only.
+- Format each pick on its own line: **Title** - one short sentence on the fit.
 - No preamble, no restating the request, no confidence labels, no follow-up question.
 - Never recommend anything outside the catalog.
 
-MODE C — CLARIFY (their request is genuinely ambiguous, e.g. "recommend something")
+MODE C - CLARIFY (their request is genuinely ambiguous, e.g. "recommend something")
 - Ask ONE short clarifying question. No recommendations this turn.
 
-MODE D — CLOSING (thanks, goodbye, "will do")
+MODE D - CLOSING (thanks, goodbye, "will do")
 - One warm one-liner. No recommendations.
+
+{_MOVIE_KNOWLEDGE_RULES}
 
 ALWAYS:
 - Reference preferences mentioned earlier in the conversation when relevant.
@@ -54,26 +59,29 @@ AVAILABLE MOVIES FROM CATALOG (use only if the user is asking for recommendation
 
 USER MESSAGE: {user_query}
 
-Privately pick the right mode and reply per the rules. Do not mention the mode name or letter. Only use the `**Title** — reason` format if you're in recommendation mode."""
+Privately pick the right mode and reply per the rules. Use movie knowledge to interpret the user's stated likes/dislikes, but recommend only from AVAILABLE MOVIES FROM CATALOG. Do not mention the mode name or letter. Only use the `**Title** - reason` format if you're in recommendation mode."""
 
 
-_AGENT_SYSTEM_BASE = """You are a friendly, conversational movie assistant with access to tools. You talk like a human — not a search engine — and only reach for tools when the user actually wants recommendations.
+_AGENT_SYSTEM_BASE = f"""You are a friendly, conversational movie assistant with access to tools. You talk like a human, not a search engine, and only reach for tools when the user actually wants recommendations.
 
 READ THE USER'S INTENT FIRST, THEN CHOOSE A MODE:
 
-MODE A — CHIT-CHAT (greetings, reactions to a movie, opinions, small talk)
-- Reply naturally in 1–3 short sentences. No tool calls. No recommendations.
+MODE A - CHIT-CHAT (greetings, reactions to a movie, opinions, small talk)
+- Reply naturally in 1-3 short sentences. No tool calls. No recommendations.
 
-MODE B — RECOMMENDATION REQUEST (they ask for suggestions, describe a mood/genre/actor, want "something to watch")
+MODE B - RECOMMENDATION REQUEST (they ask for suggestions, describe a mood/genre/actor, want "something to watch")
 - Use tools: search_movies / filter_by_genre / get_user_history as appropriate.
-- Then recommend 1–3 titles, each on its own line:  **Title** — one short sentence on the fit.
+- Then recommend 1-3 titles, each on its own line: **Title** - one short sentence on the fit.
 - No preamble, no restating the request, no confidence labels, no follow-up question.
+- Recommended titles must come from tool results. Do not invent titles that were not returned by tools.
 
-MODE C — CLARIFY (truly ambiguous request)
+MODE C - CLARIFY (truly ambiguous request)
 - Ask ONE short clarifying question. No tool calls this turn.
 
-MODE D — CLOSING (thanks, goodbye)
+MODE D - CLOSING (thanks, goodbye)
 - One warm one-liner. No tool calls, no recommendations.
+
+{_MOVIE_KNOWLEDGE_RULES}
 
 ALWAYS:
 - Reference preferences mentioned earlier when relevant.
@@ -86,7 +94,7 @@ _AGENT_USER_TEMPLATE = """CONVERSATION SUMMARY:
 
 CURRENT USER MESSAGE: {user_query}
 
-Privately pick the right mode and respond. Do not mention the mode name or letter. Only call tools if you're in recommendation mode."""
+Privately pick the right mode and respond. Use movie knowledge to understand the user's stated likes/dislikes. Do not mention the mode name or letter. Only call tools if you're in recommendation mode, and only recommend titles returned by tools."""
 
 
 class PromptTemplates:
@@ -108,7 +116,7 @@ class PromptTemplates:
 
         blocks = [f"Example {i}:\n{snippet.strip()}" for i, snippet in enumerate(snippets, start=1)]
         return (
-            "EXAMPLE DIALOGUES (from real user conversations — follow this tone and structure):\n\n"
+            "EXAMPLE DIALOGUES (from real user conversations - follow this tone and structure):\n\n"
             + "\n\n---\n\n".join(blocks)
         )
 
@@ -154,14 +162,31 @@ class PromptTemplates:
     @staticmethod
     def format_movies_context(retrieved_movies: List[Dict[str, Any]]) -> str:
         """Render retrieved movies into the block the RAG user prompt expects."""
-        return "\n\n".join([
-            f"Movie: {m['title']} ({m.get('year', 'N/A')})\n"
-            f"Genres: {', '.join(m.get('genres', []))}\n"
-            f"Rating: {m.get('rating', 'N/A')}/10\n"
-            f"Description: {m.get('description', 'No description')}\n"
-            f"Director: {m.get('director', 'Unknown')}"
-            for m in retrieved_movies
-        ])
+        blocks = []
+        for movie in retrieved_movies:
+            year = movie.get("year") or "N/A"
+            genres = ", ".join(movie.get("genres") or [])
+            overview = movie.get("overview") or movie.get("description") or "No overview"
+            if overview == f"Movie: {movie.get('title')}":
+                overview = "No overview"
+            keywords = ", ".join(movie.get("keywords") or [])
+            director = ", ".join(movie.get("director") or [])
+            cast = ", ".join((movie.get("cast") or [])[:5])
+
+            lines = [
+                f"Movie: {movie['title']} ({year})",
+                f"Genres: {genres or 'N/A'}",
+                f"Overview: {overview}",
+            ]
+            if keywords:
+                lines.append(f"Keywords: {keywords}")
+            if director:
+                lines.append(f"Director: {director}")
+            if cast:
+                lines.append(f"Cast: {cast}")
+            blocks.append("\n".join(lines))
+
+        return "\n\n".join(blocks)
 
     @staticmethod
     def summarize_conversation(messages: List[Dict[str, str]]) -> str:

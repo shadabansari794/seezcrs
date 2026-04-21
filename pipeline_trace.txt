@@ -1,0 +1,493 @@
+Movie CRS Pipeline Trace
+Source: scripts/generate_pipeline_trace.py
+
+==============================
+Test Case 0: New user with RAG
+==============================
+model_type: rag
+user_id: demo-rag-new
+
+Turn 1
+------
+  User: Hi, I'm in the mood for something cozy. I recently watched White Christmas and really liked the warm music and family feeling.
+  Step 1. classify_intent (LLM, temp=0)
+    in:  query="Hi, I'm in the mood for something cozy. I recently watched White Christmas and really liked the warm music and family feeling.", history_turns=0
+    out: intent='recommend'
+  Step 2. build_user_profile_block
+    in:  user_id='demo-rag-new'
+    out: profile_text_len=0, retrieval_boost=''
+  Step 3. extract_filters
+    in:  query="Hi, I'm in the mood for something cozy. I recently watched White Christmas and really liked the warm music and family feeling."
+    out: filters={genre='family'}
+  Step 4. vector_store.search
+    in:  query="Hi, I'm in the mood for something cozy. I recently watched White Christmas and really liked the warm music and family feeling.", top_k=10, filters={genre='family'}
+    out: candidates=[9 movies] Christmas with the Kranks, Santa Claus Is Comin' To Town VHS, Northpole, The Search For Santa Paws, Snowglobe...
+  Step 5. build_rag_prompt
+    in:  history_turns=0, profile_attached=False, movies_in_context=5
+    out: messages=2, movies_context_chars=3991
+  Step 6. OpenAI chat.completions
+    in:  model='gpt-4o-mini', temperature=0.7
+    out: tokens_in=2454, tokens_out=107, response='Oh, "White Christmas" really captures that cozy, festive vibe! If you\'re looking for something similar, you might enjoy: ⏎  ⏎ **Christmas with the Kranks** - It\'s a fun family c...'
+  Step 7. parse_recommendations
+    in:  response_chars=524
+    out: recommendations=[Christmas with the Kranks, Northpole, Snowglobe]
+  Final response (11530 ms): Oh, "White Christmas" really captures that cozy, festive vibe! If you're looking for something similar, you might enjoy:
+
+**Christmas with the Kranks** - It's a fun family comedy that explores holiday traditions and the spirit of togetherness, perfect for a cozy night in.
+
+**Northpole** - A delightful story about the magic of Christmas and the importance of family, with a heartwarming message.
+
+**Snowglobe** - It transports you to a magical Christmas world, blending fantasy with the warm feelings of the holiday season.
+
+Turn 2
+------
+  User: Could you recommend something with that same light, older-movie comfort?
+  Step 1. classify_intent (LLM, temp=0)
+    in:  query='Could you recommend something with that same light, older-movie comfort?', history_turns=2
+    out: intent='recommend'
+  Step 2. build_user_profile_block
+    in:  user_id='demo-rag-new'
+    out: profile_text_len=0, retrieval_boost=''
+  Step 3. extract_filters
+    in:  query='Could you recommend something with that same light, older-movie comfort?'
+    out: filters={}
+  Step 4. vector_store.search
+    in:  query='Could you recommend something with that same light, older-movie comfort?', top_k=10, filters={}
+    out: candidates=[10 movies] The Darkest Hour (Blu-ray 3D + Blu-ray) [Blu-ray] (Region Free), By the Light of the Silvery Moon VHS, Old Dark House VHS, Horror Classics- 50 Movie Pack Anniversary Edition, The Special Edition CLOSE ENCOUNTERS OF THE THIRD KIND Deluxe Widescreen Presentation Laserdisc (LD NOT DVD)...
+  Step 5. build_rag_prompt
+    in:  history_turns=2, profile_attached=False, movies_in_context=5
+    out: messages=2, movies_context_chars=1062
+  Step 6. OpenAI chat.completions
+    in:  model='gpt-4o-mini', temperature=0.7
+    out: tokens_in=1927, tokens_out=39, response='**By the Light of the Silvery Moon** - This charming musical brings warmth and humor with a lovely family story set in a small town, perfect for that cozy feeling you’re looking...'
+  Step 7. parse_recommendations
+    in:  response_chars=182
+    out: recommendations=[By the Light of the Silvery Moon]
+  Final response (11095 ms): **By the Light of the Silvery Moon** - This charming musical brings warmth and humor with a lovely family story set in a small town, perfect for that cozy feeling you’re looking for!
+
+Turn 3
+------
+  User: That sounds fun. Is it more silly or more sentimental?
+  Step 1. classify_intent (LLM, temp=0)
+    in:  query='That sounds fun. Is it more silly or more sentimental?', history_turns=4
+    out: intent='chat'
+  Step 2. build_user_profile_block
+    in:  user_id='demo-rag-new'
+    out: profile_text_len=0, retrieval_boost=''
+  Step 3. retrieve
+    in:  skipped=True, reason="intent='chat'"
+    out: candidates=0
+  Step 5. build_rag_prompt
+    in:  history_turns=4, profile_attached=False, movies_in_context=0
+    out: messages=2, movies_context_chars=0
+  Step 6. OpenAI chat.completions
+    in:  model='gpt-4o-mini', temperature=0.7
+    out: tokens_in=1722, tokens_out=31, response="It's definitely more sentimental! The film weaves together heartwarming moments with a touch of humor, making it a cozy watch that feels like a warm hug."
+  Step 7. parse_recommendations
+    in:  response_chars=153
+    out: recommendations=[]
+  Final response (5976 ms): It's definitely more sentimental! The film weaves together heartwarming moments with a touch of humor, making it a cozy watch that feels like a warm hug.
+
+Turn 4
+------
+  User: Nice. Give me one more option, but keep it family-friendly.
+  Step 1. classify_intent (LLM, temp=0)
+    in:  query='Nice. Give me one more option, but keep it family-friendly.', history_turns=6
+    out: intent='recommend'
+  Step 2. build_user_profile_block
+    in:  user_id='demo-rag-new'
+    out: profile_text_len=0, retrieval_boost=''
+  Step 3. extract_filters
+    in:  query='Nice. Give me one more option, but keep it family-friendly.'
+    out: filters={genre='family'}
+  Step 4. vector_store.search
+    in:  query='Nice. Give me one more option, but keep it family-friendly.', top_k=10, filters={genre='family'}
+    out: candidates=[10 movies] Family - The Complete First and Second Seasons, Modern Family: Season 2, Family Ties: Season 1, Family Ties: Season 4, Modern Family: Season 3...
+  Step 5. build_rag_prompt
+    in:  history_turns=6, profile_attached=False, movies_in_context=5
+    out: messages=2, movies_context_chars=392
+  Step 6. OpenAI chat.completions
+    in:  model='gpt-4o-mini', temperature=0.7
+    out: tokens_in=1879, tokens_out=32, response='**Family Ties: Season 1** - This classic sitcom offers a charming and family-friendly vibe, perfect for cozy viewing with heartwarming moments and humor.'
+  Step 7. parse_recommendations
+    in:  response_chars=153
+    out: recommendations=[Family Ties: Season 1]
+  Final response (1869 ms): **Family Ties: Season 1** - This classic sitcom offers a charming and family-friendly vibe, perfect for cozy viewing with heartwarming moments and humor.
+
+Turn 5
+------
+  User: Great, thanks. I will try one of those tonight.
+  Step 1. classify_intent (LLM, temp=0)
+    in:  query='Great, thanks. I will try one of those tonight.', history_turns=8
+    out: intent='closing'
+  Step 2. build_user_profile_block
+    in:  user_id='demo-rag-new'
+    out: profile_text_len=0, retrieval_boost=''
+  Step 3. retrieve
+    in:  skipped=True, reason="intent='closing'"
+    out: candidates=0
+  Step 5. build_rag_prompt
+    in:  history_turns=8, profile_attached=False, movies_in_context=0
+    out: messages=2, movies_context_chars=0
+  Step 6. OpenAI chat.completions
+    in:  model='gpt-4o-mini', temperature=0.7
+    out: tokens_in=1683, tokens_out=26, response="That sounds like a lovely plan! Enjoy your movie night, and I hope it brings you all the cozy vibes you're looking for!"
+  Step 7. parse_recommendations
+    in:  response_chars=119
+    out: recommendations=[]
+  Final response (1686 ms): That sounds like a lovely plan! Enjoy your movie night, and I hope it brings you all the cozy vibes you're looking for!
+
+==============================================
+Test Case 1: Existing LLM-Redial user with RAG
+==============================================
+model_type: rag
+user_id: A2NBOL825B93OM
+profile_hints: liked The Bourne Identity, Master and Commander: The Far Side of the World, The Lord of the Rings: The Fellowship of the Ring; disliked Driven VHS and Darkness Falls VHS.
+
+Turn 1
+------
+  User: I want something exciting, but not as ridiculous as Driven. I liked The Bourne Identity because it stayed tense without feeling dumb.
+  Step 1. classify_intent (LLM, temp=0)
+    in:  query='I want something exciting, but not as ridiculous as Driven. I liked The Bourne Identity because it stayed tense without feeling dumb.', history_turns=0
+    out: intent='recommend'
+  Step 2. build_user_profile_block
+    in:  user_id='A2NBOL825B93OM'
+    out: profile_text_len=545, retrieval_boost='Heaven The Bourne Identity Master and Commander: The Far Side of the World'
+  Step 3. extract_filters
+    in:  query='I want something exciting, but not as ridiculous as Driven. I liked The Bourne Identity because it stayed tense without feeling dumb.'
+    out: filters={}
+  Step 4. vector_store.search
+    in:  query='I want something exciting, but not as ridiculous as Driven. I liked The Bourne Identity because it stayed tense without feeling dumb. Heaven The Bourne Identity Master and Comma...', top_k=10, filters={}
+    out: candidates=[10 movies] The Bourne Legacy Steelbook, The Jason Bourne Collection (The Bourne Identity / The Bourne Supremacy / The Bourne Ultimatum), The Bourne Identity TV Miniseries  VHS, Evan Bourne Air Bourne T-Shirt, The Bourne Legacy...
+  Step 5. build_rag_prompt
+    in:  history_turns=0, profile_attached=True, movies_in_context=5
+    out: messages=2, movies_context_chars=859
+  Step 6. OpenAI chat.completions
+    in:  model='gpt-4o-mini', temperature=0.7
+    out: tokens_in=1899, tokens_out=35, response='**The Bourne Legacy** - It continues the tense, sophisticated espionage themes you enjoyed in "The Bourne Identity," but with a fresh perspective and a new protagonist.'
+  Step 7. parse_recommendations
+    in:  response_chars=168
+    out: recommendations=[The Bourne Legacy]
+  Final response (2223 ms): **The Bourne Legacy** - It continues the tense, sophisticated espionage themes you enjoyed in "The Bourne Identity," but with a fresh perspective and a new protagonist.
+
+Turn 2
+------
+  User: Can you recommend something that fits that?
+  Step 1. classify_intent (LLM, temp=0)
+    in:  query='Can you recommend something that fits that?', history_turns=2
+    out: intent='recommend'
+  Step 2. build_user_profile_block
+    in:  user_id='A2NBOL825B93OM'
+    out: profile_text_len=545, retrieval_boost='Heaven The Bourne Identity Master and Commander: The Far Side of the World'
+  Step 3. extract_filters
+    in:  query='Can you recommend something that fits that?'
+    out: filters={}
+  Step 4. vector_store.search
+    in:  query='Can you recommend something that fits that? Heaven The Bourne Identity Master and Commander: The Far Side of the World', top_k=10, filters={}
+    out: candidates=[10 movies] The Bourne Legacy Steelbook, The Jason Bourne Collection (The Bourne Identity / The Bourne Supremacy / The Bourne Ultimatum), Evan Bourne Air Bourne T-Shirt, The Bourne Identity TV Miniseries  VHS, Master and Commander: The Far Side of the World...
+  Step 5. build_rag_prompt
+    in:  history_turns=2, profile_attached=True, movies_in_context=5
+    out: messages=2, movies_context_chars=1137
+  Step 6. OpenAI chat.completions
+    in:  model='gpt-4o-mini', temperature=0.7
+    out: tokens_in=2005, tokens_out=35, response='**The Bourne Legacy Steelbook** - This film maintains the intense atmosphere and espionage elements you liked in "The Bourne Identity," while introducing new challenges and char...'
+  Step 7. parse_recommendations
+    in:  response_chars=184
+    out: recommendations=[The Bourne Legacy Steelbook]
+  Final response (1937 ms): **The Bourne Legacy Steelbook** - This film maintains the intense atmosphere and espionage elements you liked in "The Bourne Identity," while introducing new challenges and characters.
+
+Turn 3
+------
+  User: I already liked Fellowship, so that makes sense. Is it more fantasy than action?
+  Step 1. classify_intent (LLM, temp=0)
+    in:  query='I already liked Fellowship, so that makes sense. Is it more fantasy than action?', history_turns=4
+    out: intent='chat'
+  Step 2. build_user_profile_block
+    in:  user_id='A2NBOL825B93OM'
+    out: profile_text_len=545, retrieval_boost='Heaven The Bourne Identity Master and Commander: The Far Side of the World'
+  Step 3. retrieve
+    in:  skipped=True, reason="intent='chat'"
+    out: candidates=0
+  Step 5. build_rag_prompt
+    in:  history_turns=4, profile_attached=True, movies_in_context=0
+    out: messages=2, movies_context_chars=0
+  Step 6. OpenAI chat.completions
+    in:  model='gpt-4o-mini', temperature=0.7
+    out: tokens_in=1785, tokens_out=35, response="It definitely leans more toward fantasy, but there's plenty of action to keep things exciting! If you're looking for something with that blend, it could be right up your alley."
+  Step 7. parse_recommendations
+    in:  response_chars=176
+    out: recommendations=[]
+  Final response (2158 ms): It definitely leans more toward fantasy, but there's plenty of action to keep things exciting! If you're looking for something with that blend, it could be right up your alley.
+
+Turn 4
+------
+  User: What if I want something stranger and darker, but not cheap horror?
+  Step 1. classify_intent (LLM, temp=0)
+    in:  query='What if I want something stranger and darker, but not cheap horror?', history_turns=6
+    out: intent='recommend'
+  Step 2. build_user_profile_block
+    in:  user_id='A2NBOL825B93OM'
+    out: profile_text_len=545, retrieval_boost='Heaven The Bourne Identity Master and Commander: The Far Side of the World'
+  Step 3. extract_filters
+    in:  query='What if I want something stranger and darker, but not cheap horror?'
+    out: filters={genre='horror'}
+  Step 4. vector_store.search
+    in:  query='What if I want something stranger and darker, but not cheap horror? Heaven The Bourne Identity Master and Commander: The Far Side of the World', top_k=10, filters={genre='horror'}
+    out: candidates=[10 movies] Unrest: After Dark Horrorfest, Dark Ride: After Dark Horrorfest, Reincarnation: After Dark Horrorfest, Dread: After Dark Horrorfest 4, Horror Classics- 50 Movie Pack Anniversary Edition...
+  Step 5. build_rag_prompt
+    in:  history_turns=6, profile_attached=True, movies_in_context=5
+    out: messages=2, movies_context_chars=435
+  Step 6. OpenAI chat.completions
+    in:  model='gpt-4o-mini', temperature=0.7
+    out: tokens_in=1956, tokens_out=34, response='**Dread: After Dark Horrorfest 4** - This film dives into darker themes and psychological horror, offering a more intense experience without relying on cheap scares.'
+  Step 7. parse_recommendations
+    in:  response_chars=165
+    out: recommendations=[Dread: After Dark Horrorfest 4]
+  Final response (1807 ms): **Dread: After Dark Horrorfest 4** - This film dives into darker themes and psychological horror, offering a more intense experience without relying on cheap scares.
+
+Turn 5
+------
+  User: Good. That is enough for now, thanks.
+  Step 1. classify_intent (LLM, temp=0)
+    in:  query='Good. That is enough for now, thanks.', history_turns=8
+    out: intent='closing'
+  Step 2. build_user_profile_block
+    in:  user_id='A2NBOL825B93OM'
+    out: profile_text_len=545, retrieval_boost='Heaven The Bourne Identity Master and Commander: The Far Side of the World'
+  Step 3. retrieve
+    in:  skipped=True, reason="intent='closing'"
+    out: candidates=0
+  Step 5. build_rag_prompt
+    in:  history_turns=8, profile_attached=True, movies_in_context=0
+    out: messages=2, movies_context_chars=0
+  Step 6. OpenAI chat.completions
+    in:  model='gpt-4o-mini', temperature=0.7
+    out: tokens_in=1821, tokens_out=25, response="You're welcome! If you ever want to chat about movies or need more recommendations, just let me know. Enjoy your day!"
+  Step 7. parse_recommendations
+    in:  response_chars=117
+    out: recommendations=[]
+  Final response (1600 ms): You're welcome! If you ever want to chat about movies or need more recommendations, just let me know. Enjoy your day!
+
+================================
+Test Case 2: New user with Agent
+================================
+model_type: agent
+user_id: demo-agent-new
+
+Turn 1
+------
+  User: Hey, I just watched The Screaming Skull and the print quality was awful. The acting felt grade Z too.
+  Step 1. classify_intent
+    in:  query='Hey, I just watched The Screaming Skull and the print quality was awful. The acting felt grade Z too.', history_turns=0
+    out: intent='chat'
+  Step 2. chat_reply
+    in:  intent='chat', history_turns=0
+    out: response='It sounds like that was quite the experience! Some classic horror films can suffer from poor restoration, which can really take away from the enjoyment. Did you have a specific ...'
+  Step 3. parse_recommendations
+    in:  response_chars=225
+    out: recommendations=[]
+  Final response (1924 ms): It sounds like that was quite the experience! Some classic horror films can suffer from poor restoration, which can really take away from the enjoyment. Did you have a specific aspect of the film you found most disappointing?
+
+Turn 2
+------
+  User: I still want something eerie, just better made. Any ideas?
+  Step 1. classify_intent
+    in:  query='I still want something eerie, just better made. Any ideas?', history_turns=2
+    out: intent='recommend'
+  Step 2. extract_preferences
+    in:  query='I still want something eerie, just better made. Any ideas?', user_id_resolved=False
+    out: filters={}, likes=[], dislikes=[]
+  Step 3. retrieve
+    in:  query='I still want something eerie, just better made. Any ideas?', filters={}
+    out: candidates=[10 movies] Reincarnation: After Dark Horrorfest, Paranormal Activity, The Devil's Undead (aka &quot;Nothing But The Night&quot;), Mystery Classics: (The Shadow Strikes / A Shot In The Dark / Slightly Honorable / Shadows on the Stairs), Icons of Horror Collection: Sam Katzman (The Giant Claw / Creature with the Atom Brain / Zombies of Mora Tau / The Werewolf)...
+  Step 4. rank_score
+    in:  candidates_in=10
+    out: ranked_top5=[5 items], total_ranked=5
+  Step 5. explain
+    in:  ranked_in=5, history_turns=2
+    out: response='**Paranormal Activity** - This film offers a gripping and eerie atmosphere with a modern touch that elevates its suspense and craft.   ⏎ **Reincarnation: After Dark Horrorfest**...'
+  Step 6. parse_recommendations
+    in:  response_chars=439
+    out: recommendations=[Paranormal Activity, Reincarnation: After Dark Horrorfest, The Devil's Undead (aka "Nothing But The Night")]
+  Final response (2662 ms): **Paranormal Activity** - This film offers a gripping and eerie atmosphere with a modern touch that elevates its suspense and craft.  
+**Reincarnation: After Dark Horrorfest** - A chilling horror film that dives into unsettling themes, perfect for those seeking an eerie experience.  
+**The Devil's Undead (aka "Nothing But The Night")** - This title has a mysterious vibe and is better produced, making it a fitting choice for your taste.
+
+Turn 3
+------
+  User: I like slow-burn horror, but I do not want anything too confusing.
+  Step 1. classify_intent
+    in:  query='I like slow-burn horror, but I do not want anything too confusing.', history_turns=4
+    out: intent='recommend'
+  Step 2. extract_preferences
+    in:  query='I like slow-burn horror, but I do not want anything too confusing.', user_id_resolved=False
+    out: filters={genre='horror'}, likes=[], dislikes=[]
+  Step 3. retrieve
+    in:  query='I like slow-burn horror, but I do not want anything too confusing.', filters={genre='horror'}
+    out: candidates=[10 movies] Premonition j Horror Lic., Autopsy: After Dark Horrorfest III, Timeless Horror - Movies 4 You, Reincarnation: After Dark Horrorfest, Dread: After Dark Horrorfest 4...
+  Step 4. rank_score
+    in:  candidates_in=10
+    out: ranked_top5=[5 items], total_ranked=5
+  Step 5. explain
+    in:  ranked_in=5, history_turns=4
+    out: response='**Premonition j Horror Lic.** - This film offers a slow-burn experience with a straightforward narrative that keeps the suspense without confusing twists.   ⏎ **Autopsy: After D...'
+  Step 6. parse_recommendations
+    in:  response_chars=707
+    out: recommendations=[Premonition j Horror Lic., Autopsy: After Dark Horrorfest III, Timeless Horror - Movies 4 You, Reincarnation: After Dark Horrorfest, Dread: After Dark Horrorfest 4]
+  Final response (3451 ms): **Premonition j Horror Lic.** - This film offers a slow-burn experience with a straightforward narrative that keeps the suspense without confusing twists.  
+**Autopsy: After Dark Horrorfest III** - It combines slow-building tension with clear storytelling, making it a solid choice for your preferences.  
+**Timeless Horror - Movies 4 You** - A well-crafted film that provides a slow-paced eerie atmosphere without overwhelming complexity.  
+**Reincarnation: After Dark Horrorfest** - This title features a gradual build-up of horror, ensuring clarity in its storytelling.  
+**Dread: After Dark Horrorfest 4** - It delivers a methodical pace that focuses on psychological horror without becoming convoluted.
+
+Turn 4
+------
+  User: Is that closer to ghost story or slasher?
+  Step 1. classify_intent
+    in:  query='Is that closer to ghost story or slasher?', history_turns=6
+    out: intent='chat'
+  Step 2. chat_reply
+    in:  intent='chat', history_turns=6
+    out: response='Those suggestions lean more towards ghost stories, focusing on atmosphere and psychological elements rather than slasher themes. Are you leaning more towards one type over the o...'
+  Step 3. parse_recommendations
+    in:  response_chars=182
+    out: recommendations=[]
+  Final response (1913 ms): Those suggestions lean more towards ghost stories, focusing on atmosphere and psychological elements rather than slasher themes. Are you leaning more towards one type over the other?
+
+Turn 5
+------
+  User: Perfect. Thanks, goodbye.
+  Step 1. classify_intent
+    in:  query='Perfect. Thanks, goodbye.', history_turns=8
+    out: intent='closing'
+  Step 2. chat_reply
+    in:  intent='closing', history_turns=8
+    out: response="You're welcome! Enjoy your movie time!"
+  Step 3. parse_recommendations
+    in:  response_chars=38
+    out: recommendations=[]
+  Final response (1307 ms): You're welcome! Enjoy your movie time!
+
+================================================
+Test Case 3: Existing LLM-Redial user with Agent
+================================================
+model_type: agent
+user_id: AQP1VPK16SVWM
+profile_hints: liked Stir Of Echoes, Quatermass & The Pit VHS, The Incredibles (Mandarin Chinese Edition), The Three Musketeers/The Four Musketeers VHS; disliked Apollo 18, Primer, Eraserhead, The Colony.
+
+Turn 1
+------
+  User: I want something suspenseful, but please avoid anything like Apollo 18 or Primer. I did not enjoy those.
+  Step 1. classify_intent
+    in:  query='I want something suspenseful, but please avoid anything like Apollo 18 or Primer. I did not enjoy those.', history_turns=0
+    out: intent='recommend'
+  Step 2. extract_preferences
+    in:  query='I want something suspenseful, but please avoid anything like Apollo 18 or Primer. I did not enjoy those.', user_id_resolved=True
+    out: filters={}, likes=[Islands in the Stream VHS, Stir Of Echoes, Quatermass &amp; The Pit VHS, The Incredibles (Mandarin Chinese Edition), The Three Musketeers/The Four Musketeers VHS, Mars Needs Mom...], dislikes=[The Colony, Eraserhead, Apollo 18, Dracula a.D. 1972 VHS, Primer, The Colony, Tripping The Rift, Movie, Apollo 18]
+  Step 3. retrieve
+    in:  query='I want something suspenseful, but please avoid anything like Apollo 18 or Primer. I did not enjoy those.', filters={}
+    out: candidates=[10 movies] Moon Phase: The Complete Collection, Hammer Films: The Icons of Suspense Collection (Stop Me Before I Kill! / Cash on Demand / The Snorkel / Maniac / Never Take Candy from a Stranger / and more), Mission: Impossible: The 5 Movie Collection, When We Left Earth: The NASA Missions, The Mystery Science Theater 3000 Collection - The Essentials: (Manos, the Hands of Fate / Santa Claus Conquers the Martians)...
+  Step 4. rank_score
+    in:  candidates_in=10
+    out: ranked_top5=[5 items], total_ranked=5
+  Step 5. explain
+    in:  ranked_in=5, history_turns=0
+    out: response='**Hammer Films: The Icons of Suspense Collection** - This collection features classic thrillers that are sure to keep you on the edge of your seat.   ⏎ **Moon Phase: The Complet...'
+  Step 6. parse_recommendations
+    in:  response_chars=431
+    out: recommendations=[Hammer Films: The Icons of Suspense Collection, Moon Phase: The Complete Collection, Mission: Impossible: The 5 Movie Collection]
+  Final response (2480 ms): **Hammer Films: The Icons of Suspense Collection** - This collection features classic thrillers that are sure to keep you on the edge of your seat.  
+**Moon Phase: The Complete Collection** - A suspenseful series that dives into the mysteries of the moon, perfect for a thrilling watch.  
+**Mission: Impossible: The 5 Movie Collection** - Action-packed and filled with suspense, these films deliver high-stakes missions and twists.
+
+Turn 2
+------
+  User: Can you recommend one movie from that angle?
+  Step 1. classify_intent
+    in:  query='Can you recommend one movie from that angle?', history_turns=2
+    out: intent='recommend'
+  Step 2. extract_preferences
+    in:  query='Can you recommend one movie from that angle?', user_id_resolved=True
+    out: filters={}, likes=[Islands in the Stream VHS, Stir Of Echoes, Quatermass &amp; The Pit VHS, The Incredibles (Mandarin Chinese Edition), The Three Musketeers/The Four Musketeers VHS, Mars Needs Mom...], dislikes=[The Colony, Eraserhead, Apollo 18, Dracula a.D. 1972 VHS, Primer, The Colony, Tripping The Rift, Movie, Apollo 18]
+  Step 3. retrieve
+    in:  query='Can you recommend one movie from that angle?', filters={}
+    out: candidates=[10 movies]  4 Film Favorites,  4 Film Favorites, Saw 1-7 Movie Collection, Home Movies - Season One, Movies 4 You: More Sci-Fi Classics...
+  Step 4. rank_score
+    in:  candidates_in=10
+    out: ranked_top5=[5 items], total_ranked=5
+  Step 5. explain
+    in:  ranked_in=5, history_turns=2
+    out: response='**Saw 1-7 Movie Collection** - This collection offers intense suspense and psychological thrills that are sure to keep you guessing.'
+  Step 6. parse_recommendations
+    in:  response_chars=132
+    out: recommendations=[Saw 1-7 Movie Collection]
+  Final response (2457 ms): **Saw 1-7 Movie Collection** - This collection offers intense suspense and psychological thrills that are sure to keep you guessing.
+
+Turn 3
+------
+  User: I already liked that one. Give me a different direction but still with mystery.
+  Step 1. classify_intent
+    in:  query='I already liked that one. Give me a different direction but still with mystery.', history_turns=4
+    out: intent='recommend'
+  Step 2. extract_preferences
+    in:  query='I already liked that one. Give me a different direction but still with mystery.', user_id_resolved=True
+    out: filters={genre='mystery'}, likes=[Islands in the Stream VHS, Stir Of Echoes, Quatermass &amp; The Pit VHS, The Incredibles (Mandarin Chinese Edition), The Three Musketeers/The Four Musketeers VHS, Mars Needs Mom...], dislikes=[The Colony, Eraserhead, Apollo 18, Dracula a.D. 1972 VHS, Primer, The Colony, Tripping The Rift, Movie, Apollo 18]
+  Step 3. retrieve
+    in:  query='I already liked that one. Give me a different direction but still with mystery.', filters={genre='mystery'}
+    out: candidates=[10 movies] Mystery Classics V.13, The Inspector Lynley Mysteries - Series 6, Archie's Weird Mysteries - The Complete Series, Inner Sanctum Mysteries - The Complete Movie Collection: (Calling Dr. Death / Weird Woman / The Frozen Ghost / Pillow of Death / Dead Man's Eyes / and more), Murdoch Mysteries, Season One...
+  Step 4. rank_score
+    in:  candidates_in=10
+    out: ranked_top5=[5 items], total_ranked=5
+  Step 5. explain
+    in:  ranked_in=5, history_turns=4
+    out: response='**Mystery Classics V.13** - A collection of classic mysteries that will engage your mind and keep you guessing.   ⏎ **The Inspector Lynley Mysteries - Series 6** - This series c...'
+  Step 6. parse_recommendations
+    in:  response_chars=665
+    out: recommendations=[Mystery Classics V.13, The Inspector Lynley Mysteries - Series 6, Archie's Weird Mysteries - The Complete Series, Inner Sanctum Mysteries - The Complete Movie Collection, Murdoc...]
+  Final response (4189 ms): **Mystery Classics V.13** - A collection of classic mysteries that will engage your mind and keep you guessing.  
+**The Inspector Lynley Mysteries - Series 6** - This series combines intriguing plots with rich character development for a captivating experience.  
+**Archie's Weird Mysteries - The Complete Series** - A fun and quirky take on mystery that adds an interesting twist to the genre.  
+**Inner Sanctum Mysteries - The Complete Movie Collection** - A blend of classic horror and mystery that promises suspenseful storytelling.  
+**Murdoch Mysteries, Season One** - Set in the late 19th century, this series offers clever mysteries and historical intrigue.
+
+Turn 4
+------
+  User: What if I want something lighter after that?
+  Step 1. classify_intent
+    in:  query='What if I want something lighter after that?', history_turns=6
+    out: intent='recommend'
+  Step 2. extract_preferences
+    in:  query='What if I want something lighter after that?', user_id_resolved=True
+    out: filters={}, likes=[Islands in the Stream VHS, Stir Of Echoes, Quatermass &amp; The Pit VHS, The Incredibles (Mandarin Chinese Edition), The Three Musketeers/The Four Musketeers VHS, Mars Needs Mom...], dislikes=[The Colony, Eraserhead, Apollo 18, Dracula a.D. 1972 VHS, Primer, The Colony, Tripping The Rift, Movie, Apollo 18]
+  Step 3. retrieve
+    in:  query='What if I want something lighter after that?', filters={}
+    out: candidates=[10 movies] Darker Than Black: Starter Set, The Skin I Live In 2011, Dark Shadows: The Beginning, Collection 1, Heavy Metal VHS, Dead Weight...
+  Step 4. rank_score
+    in:  candidates_in=10
+    out: ranked_top5=[5 items], total_ranked=5
+  Step 5. explain
+    in:  ranked_in=5, history_turns=6
+    out: response='**Heavy Metal VHS** - This animated classic combines adventure and fantasy with a lighter tone.   ⏎ **Dark Shadows: The Beginning, Collection 1** - A quirky mix of horror and hu...'
+  Step 6. parse_recommendations
+    in:  response_chars=605
+    out: recommendations=[Heavy Metal VHS, Dark Shadows: The Beginning, Collection 1, Dead Weight, Darker Than Black: Starter Set, The Skin I Live In]
+  Final response (3109 ms): **Heavy Metal VHS** - This animated classic combines adventure and fantasy with a lighter tone.  
+**Dark Shadows: The Beginning, Collection 1** - A quirky mix of horror and humor that offers a lighter twist on the supernatural.  
+**Dead Weight** - An animated story that explores social interactions in a whimsical and lighthearted manner.  
+**Darker Than Black: Starter Set** - This series blends mystery and supernatural elements in a way that's engaging yet not too heavy.  
+**The Skin I Live In** - While more intense, it has elements of dark humor that can provide a lighter perspective on the story.
+
+Turn 5
+------
+  User: Great. That gives me a nice mix. Thanks.
+  Step 1. classify_intent
+    in:  query='Great. That gives me a nice mix. Thanks.', history_turns=8
+    out: intent='closing'
+  Step 2. chat_reply
+    in:  intent='closing', history_turns=8
+    out: response="You're very welcome! Enjoy your movie time!"
+  Step 3. parse_recommendations
+    in:  response_chars=43
+    out: recommendations=[]
+  Final response (1469 ms): You're very welcome! Enjoy your movie time!
+
