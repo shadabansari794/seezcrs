@@ -91,6 +91,7 @@ SELECTION STRATEGY:
 - If the user mentioned specific actors, directors, or themes, prioritise candidates that match those.
 - If the user said they already saw a movie, skip it and pick the next best fit.
 - Use your deep movie knowledge to explain WHY each pick fits: mention pacing, tone, memorable scenes, directorial style, thematic overlap with what the user enjoyed before.
+- CRITICAL: Always wrap the movie title in double asterisks like **Movie Title** every time you mention it so it stands out. Do NOT use quotes around titles.
 
 {few_shots}
 
@@ -101,9 +102,9 @@ Conversation so far:
 {history_msgs}
 
 --- Examples of varied response styles (mimic this variety) ---
-Style 1: "Inception is an absolute mind-bending ride you should check out; the visuals are stunning. For something set in space, Interstellar is incredible too—the father-daughter bond hits really hard."
-Style 2: "You have to see Inception if you want your brain to hurt in the best way possible. It's stunning. Similarly, Interstellar handles time dilation and family in a way that’s totally unforgettable."
-Style 3: "Have you seen Inception yet? It's one of Nolan's best, with visuals that are still hard to believe. Another space-heavy one I'd suggest is Interstellar; the emotional core of that movie is just beautiful."
+Style 1: "**Inception** is an absolute mind-bending ride you should check out; the visuals are stunning. For something set in space, **Interstellar** is incredible too—the father-daughter bond hits really hard."
+Style 2: "You have to see **Inception** if you want your brain to hurt in the best way possible. It's stunning. Similarly, **Interstellar** handles time dilation and family in a way that’s totally unforgettable."
+Style 3: "Have you seen **Inception** yet? It's one of Nolan's best, with visuals that are still hard to believe. Another space-heavy one I'd suggest is **Interstellar**; the emotional core of that movie is just beautiful."
 --- End examples ---
 
 USER: {query}
@@ -152,9 +153,9 @@ AVAILABLE MOVIES FROM CATALOG:
 {movies_context}
 
 --- Examples of varied response styles (mimic this variety) ---
-Style 1: "Arthur Christmas is a wonderful pick—it's this clever animated film about Santa's youngest son racing to deliver a forgotten gift. It captures that warm holiday feeling perfectly. For a bit more magic, The Search for Santa Paws is great too."
-Style 2: "You should definitely watch Arthur Christmas; it has that perfect mix of holiday cheer and clever humor. Another one I love is The Search for Santa Paws because it's just pure, cozy, feel-good magic."
-Style 3: "Have you ever seen Arthur Christmas? It's such a delightful take on the holiday. If you want something even more whimsical, The Search for Santa Paws has that exact cozy vibe you're after."
+Style 1: "**Arthur Christmas** is a wonderful pick—it's this clever animated film about Santa's youngest son racing to deliver a forgotten gift. It captures that warm holiday feeling perfectly. For a bit more magic, **The Search for Santa Paws** is great too."
+Style 2: "You should definitely watch **Arthur Christmas**; it has that perfect mix of holiday cheer and clever humor. Another one I love is **The Search for Santa Paws** because it's just pure, cozy, feel-good magic."
+Style 3: "Have you ever seen **Arthur Christmas**? It's such a delightful take on the holiday. If you want something even more whimsical, **The Search for Santa Paws** has that exact cozy vibe you're after."
 --- End examples ---
 
 USER MESSAGE: {user_query}
@@ -191,19 +192,19 @@ class PromptTemplates:
     # --- STATIC CURATED EXAMPLES (To ensure high-quality persona) ---
     CURATED_DIALOGUE_EXAMPLES = [
         "User: I'm really in the mood for something space-related but with a lot of heart.\n"
-        "Agent: Interstellar is a breathtaking experience if you're up for an emotional journey through space. "
+        "Agent: **Interstellar** is a breathtaking experience if you're up for an emotional journey through space. "
         "The way it explores the bond between a father and daughter across time and distance is truly moving. "
-        "You might also find Sunshine incredibly gripping; it has that same sense of wonder and high stakes "
+        "You might also find **Sunshine** incredibly gripping; it has that same sense of wonder and high stakes "
         "while maintaining a deep human core.",
-        
+
         "User: Any good 90s crime thrillers?\n"
-        "Agent: Se7en is an absolute staple if you haven't seen it yet—the atmosphere is so dark and the ending "
-        "still hits like a ton of bricks. If you want something with a bit more of a noir feel, L.A. Confidential "
+        "Agent: **Se7en** is an absolute staple if you haven't seen it yet—the atmosphere is so dark and the ending "
+        "still hits like a ton of bricks. If you want something with a bit more of a noir feel, **L.A. Confidential** "
         "is another masterclass in storytelling from that era. Both have that gritty 90s aesthetic that just pulls you in.",
-        
+
         "User: I need a movie that's funny but has a bit of a weird edge to it.\n"
-        "Agent: The Big Lebowski is the ultimate pick for a weirdly hilarious ride; the characters are just so "
-        "unforgettable. Another fun one with a unique edge is Being John Malkovich, which takes a completely "
+        "Agent: **The Big Lebowski** is the ultimate pick for a weirdly hilarious ride; the characters are just so "
+        "unforgettable. Another fun one with a unique edge is **Being John Malkovich**, which takes a completely "
         "bizarre concept and turns it into something oddly relatable and funny."
     ]
 

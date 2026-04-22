@@ -29,6 +29,8 @@ from models.rag.parser import parse_recommendations as parse_recommendations_tex
 
 logger = logging.getLogger(__name__)
 
+REASON_PING = "\x1e"
+
 
 class AgentRecommender:
     """Structured recommendation pipeline driven by LangGraph."""
@@ -138,10 +140,12 @@ class AgentRecommender:
 
         # --- Stage 1: Rewrite query ---
         log_reasoning_step("Rewriting query")
+        yield REASON_PING
         state.update(await self.nodes["rewrite_query"](state))
 
         # --- Stage 2: Classify intent ---
         log_reasoning_step("Classifying intent")
+        yield REASON_PING
         state.update(await self.nodes["classify_intent"](state))
 
         intent = state.get("intent", "recommend")
@@ -149,19 +153,25 @@ class AgentRecommender:
         if intent == INTENT_RECOMMEND:
             # --- Stage 3: Extract preferences ---
             log_reasoning_step("Extracting filters")
+            yield REASON_PING
             state.update(self.nodes["extract_preferences"](state))
 
             # --- Stage 4: Retrieve ---
-            log_reasoning_step("Searching catalog")
+            # log_reasoning_step("Searching catalog")
+            yield REASON_PING
             state.update(self.nodes["retrieve"](state))
 
             # --- Stage 5: Rank ---
             log_reasoning_step("Ranking candidates")
+            yield REASON_PING
             state.update(self.nodes["rank_score"](state))
 
             # Build the explain prompt for the final streamed call
             ranked = state.get("ranked") or []
             history_str = _history_to_string(state.get("history") or [])
+            profile_text = (state.get("preferences") or {}).get("profile_text") or ""
+            if profile_text:
+                history_str = f"{profile_text}\n\n{history_str}"
             candidates_block = _format_candidate_block(
                 ranked, limit=max(max_recommendations, 3)
             )
@@ -175,6 +185,7 @@ class AgentRecommender:
         else:
             # Chat / clarify / closing — skip retrieval
             log_reasoning_step("Chatting")
+            yield REASON_PING
             history_str = _history_to_string(state.get("history") or [])
             prompt_template = self.prompt_templates.get_chat_reply_prompt()
             system_prompt = prompt_template.format(
@@ -185,6 +196,7 @@ class AgentRecommender:
 
         # --- Final stage: Stream the LLM response directly ---
         log_reasoning_step("Generating response")
+        yield REASON_PING
         response = await self.client.chat.completions.create(
             model=settings.llm_model_main,
             messages=[

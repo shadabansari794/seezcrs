@@ -64,7 +64,7 @@ Data limitations are reflected in the implementation:
 |       |-- graph.py         LangGraph construction
 |       |-- intent.py        LLM intent classification
 |       |-- nodes.py         LangGraph execution nodes
-|       |-- tools.py         Agentic tools: IMDb, Web Search, User History
+|       |-- tools.py         Agentic tools: IMDb, Web Search
 |       `-- state.py         AgentState definition
 |-- prompts/
 |   `-- templates.py         Shared RAG and Agent prompt templates
@@ -111,7 +111,7 @@ FastAPI app
   |     extract filters -> vector search -> prompt -> OpenAI
   |
   `-- agent:
-        prompt -> LangGraph agent -> dynamic tools (History, IMDb, Web) -> OpenAI
+        user-profile block + prompt -> LangGraph agent -> dynamic tools (IMDb, Web) -> OpenAI
   |
   |-- appends user and assistant messages to memory
   `-- returns RecommendationResponse
@@ -170,9 +170,9 @@ each turn to one of two branches:
 Stage details:
 
 1. [models/agent/intent.py](models/agent/intent.py) — LLM picks `recommend | chat | clarify | closing`.
-2. [models/agent/nodes.py](models/agent/nodes.py) — `extract_preferences` pulls filters via [models/rag/filters.py](models/rag/filters.py) and user history; `retrieve` hits Chroma.
+2. [models/agent/nodes.py](models/agent/nodes.py) — `extract_preferences` pulls filters via [models/rag/filters.py](models/rag/filters.py) and builds the USER PROFILE block + `retrieval_boost` via the shared [`build_user_profile_block`](models/rag/utils.py) helper; `retrieve` appends the boost to the query and hits Chroma.
 3. `rank_score` uses the [utils/reranker.py](utils/reranker.py) simple keyword-overlap heuristic (same as RAG).
-4. `explain` and `chat_reply` wrap a **ReAct loop** using [models/agent/tools.py](models/agent/tools.py) to access user history, IMDb facts, or web search.
+4. `explain` and `chat_reply` wrap a **ReAct loop** using [models/agent/tools.py](models/agent/tools.py) to look up IMDb facts or search the web. User history is already in the prompt via the profile block, so no history tool is needed.
 5. Parse recommendations with the shared RAG parser.
 
 The graph is assembled in [models/agent/graph.py](models/agent/graph.py) from nodes built in [models/agent/nodes.py](models/agent/nodes.py).
@@ -213,7 +213,7 @@ return a natural response with `recommendations: []`.
 | Main file | [models/rag/recommender.py](models/rag/recommender.py) | [models/agent/recommender.py](models/agent/recommender.py) |
 | Flow | Retrieve first, then generate | LLM decides whether to call tools |
 | Retrieval | Always before the LLM call | On demand through tools |
-| Personalization | User profile block in prompt | `get_user_history` tool |
+| Personalization | Shared USER PROFILE block in prompt + `retrieval_boost` on vector query | Shared USER PROFILE block in prompt + `retrieval_boost` on vector query |
 | Latency | Lower and bounded | Variable, depends on tool calls |
 | Best fit | Direct recommendation requests | Exploratory or multi-constraint requests |
 
@@ -485,10 +485,12 @@ Retrieved N movies for query: ... (filters=...)
 The agent path also logs graph/tool activity such as:
 
 ```text
-[Agent] start ...
-[Agent] node=agent messages_in=N
-[Agent.tool] search_movies ...
-[Agent] done steps=N
+[Agent] start user_id='...' history_turns=0 max_recs=5 query='...'
+[Agent.extract_preferences] filters={'genre': 'comedy'} has_profile=True boost='White Christmas'
+[Agent.retrieve] query='...' boost='White Christmas' filters={'genre': 'comedy'} -> 10 candidates
+[Agent.explain] ranked=5 history_turns=0 tools_available=True
+[Agent.explain] 🛠️ LLM decided to use tool 'search_imdb' with args: {...}
+[Agent] done intent=recommend candidates=10 ranked=5 response_len=...
 ```
 
 ## Git Hygiene

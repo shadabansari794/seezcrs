@@ -1,37 +1,70 @@
 [Agent.graph] compiled nodes=['chat_reply', 'classify_intent', 'explain', 'extract_preferences', 'rank_score', 'retrieve', 'rewrite_query'] entry=classify_intent intents=['chat', 'recommend', 'clarify', 'closing']
 
 ================================================================================
+REQUEST >> [Agent] start user_id='A30Q8X8B1S3GGT' history_turns=0 max_recs=5 query='recommend a comedy'
+================================================================================
+[QueryRewrite] 'recommend a comedy' -> 'Recommend a comedy film.'
+[Agent.intent] classified='recommend' query='recommend a comedy'
+[Agent.extract_preferences] filters={'genre': 'comedy'} has_profile=True boost='White Christmas'
+[Agent.retrieve] query='Recommend a comedy film. White Christmas' boost='White Christmas' filters={'genre': 'comedy'} -> 10 candidates
+[Agent.explain] ranked=5 history_turns=0 tools_available=True
+RESULT >> If you're in the mood for some classic comedy, "My Favorite Blonde" might be just what you need. With Bob Hope in the lead, this film combines humor with a dash of espionage, as he finds himself entangled with a British agent and a coded message. It'...
+[Agent] done intent=recommend candidates=10 ranked=5 response_len=553
+
+================================================================================
+REQUEST >> [RAG] start user_id='A30Q8X8B1S3GGT' history_turns=2 max_recs=5 query='recommend a comedy'
+================================================================================
+[QueryRewrite] 'recommend a comedy' -> 'I would like you to recommend a comedy film that I can watch.'
+[Agent.intent] classified='recommend' query='I would like you to recommend a comedy film that I can watch.'
+[RAG] intent='recommend'
+[RAG] extracted filters: {'genre': 'comedy'}
+[RAG] calling LLM model=gpt-4o messages=1 candidates=5
+[RAG] LLM done tokens_in=1430 tokens_out=114 response_len=557
+RESULT >> If you're in the mood for some classic comedy, **My Favorite Blonde** might be just what you need. With Bob Hope in the lead, this film combines humor with a dash of espionage, as he finds himself entangled with a British agent and a coded message. I...
+
+================================================================================
+REQUEST >> [Agent] start user_id='demo-anon-xyz' history_turns=0 max_recs=5 query='recommend a comedy'
+================================================================================
+[QueryRewrite] 'recommend a comedy' -> 'Please recommend a comedy film.'
+[Agent.intent] classified='recommend' query='recommend a comedy'
+[Agent.extract_preferences] filters={'genre': 'comedy'} has_profile=False boost=''
+[Agent.retrieve] query='Please recommend a comedy film.' boost='' filters={'genre': 'comedy'} -> 10 candidates
+[Agent.explain] ranked=5 history_turns=0 tools_available=True
+RESULT >> Looking for Comedy in the Muslim World offers a unique perspective and a lot of laughs as Albert Brooks dives into the challenge of discovering humor across cultural lines. It's a clever and insightful comedy. If you're in the mood for something more...
+[Agent] done intent=recommend candidates=10 ranked=5 response_len=455
+
+================================================================================
 REQUEST >> [RAG] start user_id='new_user_rag_multi' history_turns=0 max_recs=5 query='I am looking for a heartwarming family movie.'
 ================================================================================
-[QueryRewrite] 'I am looking for a heartwarming family movie.' -> 'I am looking for a heartwarming family movie that is suitable for all ages and has themes of love and togetherness.'
-[Agent.intent] classified='recommend' query='I am looking for a heartwarming family movie that is suitable for all ages and h'
+[QueryRewrite] 'I am looking for a heartwarming family movie.' -> 'I am looking for a heartwarming family movie that features themes of love, togetherness, and the importance of family bo'
+[Agent.intent] classified='recommend' query='I am looking for a heartwarming family movie that features themes of love, toget'
 [RAG] intent='recommend'
 [RAG] extracted filters: {'genre': 'family'}
 [RAG] calling LLM model=gpt-4o messages=1 candidates=5
-[RAG] LLM done tokens_in=1213 tokens_out=97 response_len=500
-RESULT >> Arthur Christmas is a delightful choice if you're after a heartwarming family movie. The film beautifully captures the spirit of the holidays with its charming story about Santa's youngest son, Arthur, embarking on a mission to deliver a forgotten pr...
+[RAG] LLM done tokens_in=1233 tokens_out=82 response_len=432
+RESULT >> For a truly heartwarming family experience, **Angel Dog** might be just what you're looking for. It's a touching story about a dog named Cooper who survives a tragic accident and helps a grieving man find healing and companionship. The film beautiful...
 
 ================================================================================
 REQUEST >> [RAG] start user_id='new_user_rag_multi' history_turns=2 max_recs=5 query='Can you suggest something similar but more recent?'
 ================================================================================
-[QueryRewrite] 'Can you suggest something similar but more recent?' -> 'Can you suggest a heartwarming family movie that is similar to Arthur Christmas or Eloise At Christmastime but more rece'
-[Agent.intent] classified='recommend' query='Can you suggest a heartwarming family movie that is similar to Arthur Christmas '
+[QueryRewrite] 'Can you suggest something similar but more recent?' -> 'Can you suggest a heartwarming family movie similar to **Angel Dog** but more recent?'
+[Agent.intent] classified='recommend' query='Can you suggest a heartwarming family movie similar to **Angel Dog** but more re'
 [RAG] intent='recommend'
 [RAG] extracted filters: {'genre': 'family'}
 [RAG] calling LLM model=gpt-4o messages=1 candidates=5
-[RAG] LLM done tokens_in=1324 tokens_out=70 response_len=377
-RESULT >> Northpole might be just what you're looking for. It brings a magical twist to the Christmas spirit, focusing on the enchanting city where Santa and his elves live. The story unfolds with a lovely message about the importance of family and togethernes...
+[RAG] LLM done tokens_in=1312 tokens_out=74 response_len=388
+RESULT >> For a more recent heartwarming family film, you might enjoy **Max**. It's a touching story about a military working dog who returns from Afghanistan and finds a new home with his handler's family. The film beautifully explores themes of healing and c...
 
 ================================================================================
 REQUEST >> [RAG] start user_id='new_user_rag_multi' history_turns=4 max_recs=5 query='Actually, I'd prefer if it had some magic or fantasy elements.'
 ================================================================================
-[QueryRewrite] "Actually, I'd prefer if it had some magic or fantasy elements." -> "Actually, I'd prefer if the movie had some magic or fantasy elements, similar to the enchanting city in Northpole where "
-[Agent.intent] classified='recommend' query="Actually, I'd prefer if the movie had some magic or fantasy elements, similar to"
+[QueryRewrite] "Actually, I'd prefer if it had some magic or fantasy elements." -> "Actually, I'd prefer if the heartwarming family movie had some magic or fantasy elements."
+[Agent.intent] classified='recommend' query="Actually, I'd prefer if the heartwarming family movie had some magic or fantasy "
 [RAG] intent='recommend'
-[RAG] extracted filters: {'genre': 'fantasy', 'actor': 'magi'}
+[RAG] extracted filters: {'genre': 'family', 'actor': 'magi'}
 [RAG] calling LLM model=gpt-4o messages=1 candidates=5
-[RAG] LLM done tokens_in=1369 tokens_out=100 response_len=517
-RESULT >> The Year Without a Santa Claus might be right up your alley. This classic animation is filled with whimsical fantasy as Mrs. Claus and her quirky elf companions, Jingle and Jangle, embark on a mission to reignite the Christmas spirit. It's a charming...
+[RAG] LLM done tokens_in=1272 tokens_out=106 response_len=548
+RESULT >> If you're looking for something with a touch of magic and fantasy, **The Family Man** might be a perfect fit. Although it's grounded in reality, it has a whimsical twist where the protagonist, Jack, wakes up to a completely different life, offering a...
 
 ================================================================================
 REQUEST >> [Agent] start user_id='agent_tools_multi' history_turns=0 max_recs=5 query='Who directed the movie Inception?'
@@ -41,7 +74,7 @@ REQUEST >> [Agent] start user_id='agent_tools_multi' history_turns=0 max_recs=5 
 [Agent.chat_reply] intent=chat history_turns=0 tools_available=True
 [Tool] Searching IMDb for: Inception
 [Agent.chat_reply] 🛠️ LLM decided to use tool 'search_imdb' with args: {'movie_title': 'Inception'}
-RESULT >> It seems there was an issue retrieving the information. However, I can tell you that Inception was directed by Christopher Nolan. He's known for his intricate storytelling and stunning visuals....
+RESULT >> It looks like I couldn't retrieve the information right now, but the movie Inception was directed by Christopher Nolan. He's known for his mind-bending storytelling and visually stunning films....
 [Agent] done intent=chat candidates=0 ranked=0 response_len=193
 
 ================================================================================
@@ -50,72 +83,70 @@ REQUEST >> [Agent] start user_id='agent_tools_multi' history_turns=2 max_recs=5 
 [QueryRewrite] 'What other famous movies did they direct?' -> 'What other famous movies did Christopher Nolan direct?'
 [Agent.intent] classified='chat' query='What other famous movies did they direct?'
 [Agent.chat_reply] intent=chat history_turns=1 tools_available=True
-RESULT >> Christopher Nolan has directed several notable films. Some of his most famous works include a mix of mind-bending narratives and visually stunning experiences. Would you like to know more about his films in a specific genre or style?...
-[Agent] done intent=chat candidates=0 ranked=0 response_len=233
+RESULT >> Christopher Nolan has directed several other renowned films that have made a significant impact. His style often includes complex narratives and stunning visuals. If you're interested in his work, you might enjoy exploring some of his other films to ...
+[Agent] done intent=chat candidates=0 ranked=0 response_len=329
 
 ================================================================================
 REQUEST >> [Agent] start user_id='agent_tools_multi' history_turns=4 max_recs=5 query='Which of those are sci-fi movies?'
 ================================================================================
-[QueryRewrite] 'Which of those are sci-fi movies?' -> "Which of Christopher Nolan's movies are considered sci-fi films?"
+[QueryRewrite] 'Which of those are sci-fi movies?' -> 'Which of the movies directed by Christopher Nolan are considered sci-fi movies?'
 [Agent.intent] classified='chat' query='Which of those are sci-fi movies?'
 [Agent.chat_reply] intent=chat history_turns=2 tools_available=True
-RESULT >> Christopher Nolan has directed a few sci-fi films that are quite popular. Inception is one of them, known for its dream-within-a-dream concept and stunning visual effects. Another is Interstellar, which explores space travel and the emotional bonds t...
-[Agent] done intent=chat candidates=0 ranked=0 response_len=364
+RESULT >> Christopher Nolan's work in the sci-fi genre is quite remarkable. His films often blend science fiction with philosophical questions and thrilling narratives. If you're curious about his sci-fi movies, I'd say his ability to intertwine complex storyt...
+[Agent] done intent=chat candidates=0 ranked=0 response_len=393
 
 ================================================================================
 REQUEST >> [Agent] start user_id='agent_tools_multi' history_turns=6 max_recs=5 query='What is the plot of Interstellar? Use IMDb.'
 ================================================================================
-[QueryRewrite] 'What is the plot of Interstellar? Use IMDb.' -> 'What is the plot of the movie Interstellar? Please use IMDb for the details.'
+[QueryRewrite] 'What is the plot of Interstellar? Use IMDb.' -> 'What is the plot of the movie Interstellar? Please use IMDb for the information.'
 [Agent.intent] classified='chat' query='What is the plot of Interstellar? Use IMDb.'
 [Agent.chat_reply] intent=chat history_turns=3 tools_available=True
 [Tool] Searching IMDb for: Interstellar
 [Agent.chat_reply] 🛠️ LLM decided to use tool 'search_imdb' with args: {'movie_title': 'Interstellar'}
-RESULT >> It seems there was an issue retrieving the plot from IMDb. However, I can tell you that Interstellar is about a group of explorers who undertake a mission through a wormhole in space to ensure humanity's survival. The film beautifully combines themes...
-[Agent] done intent=chat candidates=0 ranked=0 response_len=336
+RESULT >> It seems there was an issue retrieving the plot from IMDb. However, I can tell you that Interstellar is about a group of astronauts who travel through a wormhole near Saturn in search of a new home for humanity as Earth faces ecological collapse. It'...
+[Agent] done intent=chat candidates=0 ranked=0 response_len=377
 
 ================================================================================
-REQUEST >> [Agent] start user_id='A30Q8X8B1S3GGT' history_turns=0 max_recs=5 query="I'm in the mood for an action movie like the ones in my history."
+REQUEST >> [Agent] start user_id='A30Q8X8B1S3GGT' history_turns=4 max_recs=5 query="I'm in the mood for an action movie like the ones in my history."
 ================================================================================
-[QueryRewrite] "I'm in the mood for an action movie like the ones in my history." -> "I'm in the mood for an action movie like the action movies I have watched in the past."
+[QueryRewrite] "I'm in the mood for an action movie like the ones in my history." -> "I'm in the mood for an action movie like the ones I have watched in the past."
 [Agent.intent] classified='recommend' query="I'm in the mood for an action movie like the ones in my history."
-[Agent.extract_preferences] filters={'genre': 'action'} user_history_keys=['recent_likes', 'recent_dislikes', 'historical_sample', 'full_history']
-[Agent.retrieve] query="I'm in the mood for an action movie like the action movies I have watched in the" filters={'genre': 'action'} -> 10 candidates
-[Agent.explain] ranked=5 history_turns=0 tools_available=True
-[Agent.explain] 🛠️ LLM decided to use tool 'search_user_history' with args: {'query': 'action movies'}
-RESULT >> For a thrilling action-packed experience, "Commando" might be just what you're in the mood for. Arnold Schwarzenegger delivers a powerhouse performance as John Matrix, a former leader of a special commando unit, who is forced back into action in a mi...
-[Agent] done intent=recommend candidates=10 ranked=5 response_len=945
+[Agent.extract_preferences] filters={'genre': 'action'} has_profile=True boost='White Christmas'
+[Agent.retrieve] query="I'm in the mood for an action movie like the ones I have watched in the past. Wh" boost='White Christmas' filters={'genre': 'action'} -> 8 candidates
+[Agent.explain] ranked=5 history_turns=2 tools_available=True
+RESULT >> Diving into some action-packed films, "Whiteout" could be right up your alley. It combines the thrill of a mystery with the harsh, isolated setting of Antarctica, making for an intense ride. Kate Beckinsale leads as a U.S. Marshal facing both the ele...
+[Agent] done intent=recommend candidates=8 ranked=5 response_len=536
 
 ================================================================================
-REQUEST >> [Agent] start user_id='A30Q8X8B1S3GGT' history_turns=2 max_recs=5 query="I've seen Commando. Suggest something more modern."
+REQUEST >> [Agent] start user_id='A30Q8X8B1S3GGT' history_turns=6 max_recs=5 query="I've seen Commando. Suggest something more modern."
 ================================================================================
-[QueryRewrite] "I've seen Commando. Suggest something more modern." -> 'I\'ve seen "Commando." Suggest something more modern in the action movie genre.'
+[QueryRewrite] "I've seen Commando. Suggest something more modern." -> "I've seen **Commando**. Suggest something more modern in the action genre."
 [Agent.intent] classified='recommend' query="I've seen Commando. Suggest something more modern."
-[Agent.extract_preferences] filters={'genre': 'action'} user_history_keys=['recent_likes', 'recent_dislikes', 'historical_sample', 'full_history']
-[Agent.retrieve] query='I\'ve seen "Commando." Suggest something more modern in the action movie genre.' filters={'genre': 'action'} -> 10 candidates
-[Agent.explain] ranked=5 history_turns=1 tools_available=True
-RESULT >> For a more modern twist on the action genre, "The Expendables" is a fantastic pick. It's a high-octane adventure that brings together a powerhouse cast including Sylvester Stallone, Jason Statham, and Jet Li. The film is packed with explosive sequenc...
-[Agent] done intent=recommend candidates=10 ranked=5 response_len=845
+[Agent.extract_preferences] filters={'genre': 'action'} has_profile=True boost='White Christmas'
+[Agent.retrieve] query="I've seen **Commando**. Suggest something more modern in the action genre. White" boost='White Christmas' filters={'genre': 'action'} -> 10 candidates
+[Agent.explain] ranked=5 history_turns=3 tools_available=True
+RESULT >> For a more modern action-packed experience, "The Expendables" could be a great choice. It's a thrilling ride with Sylvester Stallone leading a team of mercenaries. The film is packed with adrenaline-pumping sequences and an ensemble cast that include...
+[Agent] done intent=recommend candidates=10 ranked=5 response_len=445
 
 ================================================================================
-REQUEST >> [Agent] start user_id='A30Q8X8B1S3GGT' history_turns=4 max_recs=5 query='Wait, what movies did you recommend to me in our past interactions before this o'
+REQUEST >> [Agent] start user_id='A30Q8X8B1S3GGT' history_turns=8 max_recs=5 query='Wait, what movies did you recommend to me in our past interactions before this o'
 ================================================================================
-[QueryRewrite] 'Wait, what movies did you recommend to me in our past interactions before this o' -> 'Wait, what movies did you recommend to me in our past interactions before this one, specifically the titles "Commando," '
+[QueryRewrite] 'Wait, what movies did you recommend to me in our past interactions before this o' -> "Wait, what movies did you recommend to me in our past interactions before this one? I'm trying to recall the titles you "
 [Agent.intent] classified='chat' query='Wait, what movies did you recommend to me in our past interactions before this o'
-[Agent.chat_reply] intent=chat history_turns=2 tools_available=True
-[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_user_history' with args: {'query': 'recommended movies'}
-RESULT >> In our past interactions, I recommended "The Lord of the Rings: The Return of the King" and "Pirates of the Golden Age Movie Collection: Against All Flags / Buccaneer's Girl / Yankee Buccaneer / Double Crossbones." If you need any more help or sugges...
-[Agent] done intent=chat candidates=0 ranked=0 response_len=274
+[Agent.chat_reply] intent=chat history_turns=4 tools_available=True
+RESULT >> In our previous conversations, I mentioned "The Expendables" as a modern action-packed film and "Whiteout" and "Reindeer Games" for their thrilling and suspenseful elements. I also talked about "My Favorite Blonde" and "White Christmas" as classic co...
+[Agent] done intent=chat candidates=0 ranked=0 response_len=257
 
 ================================================================================
-REQUEST >> [Agent] start user_id='A30Q8X8B1S3GGT' history_turns=6 max_recs=5 query='Is there anything similar being announced lately?'
+REQUEST >> [Agent] start user_id='A30Q8X8B1S3GGT' history_turns=10 max_recs=5 query='Is there anything similar being announced lately?'
 ================================================================================
-[QueryRewrite] 'Is there anything similar being announced lately?' -> 'Is there anything similar to "The Expendables" or "Hard Target" being announced lately?'
+[QueryRewrite] 'Is there anything similar being announced lately?' -> 'Is there anything similar to "The Expendables" being announced lately?'
 [Agent.intent] classified='chat' query='Is there anything similar being announced lately?'
-[Agent.chat_reply] intent=chat history_turns=3 tools_available=True
-[Tool] Searching Web for: upcoming action movies 2023
-[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'upcoming action movies 2023'}
-RESULT >> There are some interesting action movies on the horizon. "Believer 2" is coming out this fall, featuring a crime action storyline about a fierce battle against a drug cartel. Another one to look out for is "Lift," set to release in January 2024, whic...
-[Agent] done intent=chat candidates=0 ranked=0 response_len=397
+[Agent.chat_reply] intent=chat history_turns=5 tools_available=True
+[Tool] Searching Web for: recent action movie announcements 2023
+[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'recent action movie announcements 2023'}
+RESULT >> There are some exciting action movies on the horizon. Netflix has "Lift," an international heist film set on a plane, scheduled for January 2024. "Ballerina," a revenge story featuring a former bodyguard, is set to release this fall. These films are ...
+[Agent] done intent=chat candidates=0 ranked=0 response_len=325
 
 ================================================================================
 REQUEST >> [Agent] start user_id='web_explorer_multi' history_turns=0 max_recs=5 query='Hi! What are the biggest movie announcements this month?'
@@ -125,44 +156,44 @@ REQUEST >> [Agent] start user_id='web_explorer_multi' history_turns=0 max_recs=5
 [Agent.chat_reply] intent=chat history_turns=0 tools_available=True
 [Tool] Searching Web for: biggest movie announcements October 2023
 [Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'biggest movie announcements October 2023'}
-RESULT >> This month has some exciting movie announcements. Martin Scorsese's "Killers of the Flower Moon" is one of the highly anticipated releases, making its way to theaters. There's also a new installment in "The Exorcist" series called "The Exorcist: Beli...
-[Agent] done intent=chat candidates=0 ranked=0 response_len=450
+RESULT >> This month has some exciting movie announcements. The Exorcist: Believer is generating a lot of buzz as a reboot with Ellen Burstyn reprising her iconic role. Martin Scorsese's Killers of the Flower Moon, starring Leonardo DiCaprio and Robert De Niro...
+[Agent] done intent=chat candidates=0 ranked=0 response_len=482
 
 ================================================================================
 REQUEST >> [Agent] start user_id='web_explorer_multi' history_turns=2 max_recs=5 query='Are there any updates on the next Marvel movie?'
 ================================================================================
-[QueryRewrite] 'Are there any updates on the next Marvel movie?' -> 'Are there any updates on the next Marvel movie, specifically regarding its release date or any new trailers?'
+[QueryRewrite] 'Are there any updates on the next Marvel movie?' -> 'Are there any updates on the next Marvel movie after the recent announcements about The Exorcist: Believer, Killers of t'
 [Agent.intent] classified='chat' query='Are there any updates on the next Marvel movie?'
 [Agent.chat_reply] intent=chat history_turns=1 tools_available=True
-[Tool] Searching Web for: next Marvel movie updates October 2023
-[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'next Marvel movie updates October 2023'}
-RESULT >> The next big Marvel movie to look out for is "The Marvels," which premiered on November 10, 2023. It features Carol Danvers, Monica Rambeau, and Kamala Khan teaming up for an action-packed adventure that spans across the cosmos. Their powers become e...
-[Agent] done intent=chat candidates=0 ranked=0 response_len=497
+[Tool] Searching Web for: next Marvel movie updates
+[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'next Marvel movie updates'}
+RESULT >> The latest buzz in the Marvel universe includes the much-anticipated "Avengers: Doomsday," set to release in December 2026. This film is expected to unite the Avengers, the Fantastic Four, and even the X-Men. Additionally, there's excitement around t...
+[Agent] done intent=chat candidates=0 ranked=0 response_len=519
 
 ================================================================================
 REQUEST >> [Agent] start user_id='web_explorer_multi' history_turns=4 max_recs=5 query='Which actors are confirmed for it?'
 ================================================================================
-[QueryRewrite] 'Which actors are confirmed for it?' -> 'Which actors are confirmed for the Marvel movie "The Marvels"?'
+[QueryRewrite] 'Which actors are confirmed for it?' -> 'Which actors are confirmed for the upcoming Marvel movie "Avengers: Doomsday"?'
 [Agent.intent] classified='chat' query='Which actors are confirmed for it?'
 [Agent.chat_reply] intent=chat history_turns=2 tools_available=True
-[Tool] Searching IMDb for: The Marvels
-[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_imdb' with args: {'movie_title': 'The Marvels'}
-RESULT >> It seems like there was an issue finding the cast details for "The Marvels" on IMDb. However, from what I know, Brie Larson is reprising her role as Carol Danvers (Captain Marvel), Teyonah Parris plays Monica Rambeau, and Iman Vellani is Kamala Khan ...
-[Agent] done intent=chat candidates=0 ranked=0 response_len=339
+[Tool] Searching IMDb for: Avengers: Doomsday
+[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_imdb' with args: {'movie_title': 'Avengers: Doomsday'}
+RESULT >> It seems there aren't any official details available about the cast for "Avengers: Doomsday" yet. The information might not be fully released or updated on IMDb. Is there anything else you'd like to know or explore related to Marvel or other movies?...
+[Agent] done intent=chat candidates=0 ranked=0 response_len=249
 
 ================================================================================
 REQUEST >> [Agent] start user_id='web_explorer_multi' history_turns=6 max_recs=5 query='Search for a trailer or release date for any of those.'
 ================================================================================
-[QueryRewrite] 'Search for a trailer or release date for any of those.' -> 'Search for a trailer or release date for "The Marvels.'
+[QueryRewrite] 'Search for a trailer or release date for any of those.' -> 'Search for a trailer or release date for any of the upcoming Marvel movies, such as "Avengers: Doomsday," "Spider-Man: B'
 [Agent.intent] classified='chat' query='Search for a trailer or release date for any of those.'
 [Agent.chat_reply] intent=chat history_turns=3 tools_available=True
-[Tool] Searching Web for: The Marvels trailer release date
-[Tool] Searching Web for: Killers of the Flower Moon trailer release date
-[Tool] Searching Web for: The Exorcist: Believer trailer release date
-[Tool] Searching Web for: Taylor Swift The Eras Tour film trailer release date
-[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'The Marvels trailer release date'}
-[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'Killers of the Flower Moon trailer release date'}
-[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'The Exorcist: Believer trailer release date'}
-[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'Taylor Swift The Eras Tour film trailer release date'}
-RESULT >> Here's what I found regarding the trailers and release dates:
-[Agent] done intent=chat candidates=0 ranked=0 response_len=731
+[Tool] Searching Web for: Avengers: Doomsday trailer release date
+[Tool] Searching Web for: Spider-Man: Brand New Day trailer release date
+[Tool] Searching Web for: Blade movie trailer release date
+[Tool] Searching Web for: Black Panther new movie trailer release date
+[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'Avengers: Doomsday trailer release date'}
+[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'Spider-Man: Brand New Day trailer release date'}
+[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'Blade movie trailer release date'}
+[Agent.chat_reply] 🛠️ LLM decided to use tool 'search_web' with args: {'query': 'Black Panther new movie trailer release date'}
+RESULT >> Here's what I found:
+[Agent] done intent=chat candidates=0 ranked=0 response_len=977

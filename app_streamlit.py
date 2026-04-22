@@ -116,12 +116,23 @@ st.markdown("""
         color: #00d2ff !important;
         font-weight: 600 !important;
     }
+
+    /* Movie title highlight inside assistant prose */
+    .movie-name {
+        color: #ffd166 !important;
+        font-weight: 800 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # --- UTILS ---
+REASON_PING = "\x1e"
+
 def parse_recs_simple(text):
     return re.findall(r"\*\*(.*?)\*\*", text)
+
+def highlight_titles(text):
+    return re.sub(r"\*\*(.*?)\*\*", r'<span class="movie-name">\1</span>', text)
 
 def get_reasoning_steps():
     if REASONING_PATH.exists():
@@ -149,6 +160,11 @@ with st.sidebar:
     
     if st.button("Clear History"):
         st.session_state.messages = []
+        try:
+            if REASONING_PATH.exists():
+                REASONING_PATH.write_text("", encoding="utf-8")
+        except Exception:
+            pass
         st.rerun()
 
     st.markdown("---")
@@ -177,7 +193,10 @@ if "messages" not in st.session_state:
 # Display existing messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        if message["role"] == "assistant":
+            st.markdown(highlight_titles(message["content"]), unsafe_allow_html=True)
+        else:
+            st.markdown(message["content"])
         if "recommendations" in message:
             recs = message["recommendations"]
             if recs:
@@ -217,13 +236,20 @@ if prompt := st.chat_input("Ask for a recommendation..."):
             with requests.post(STREAM_URL, json=payload, stream=True, timeout=120) as r:
                 r.raise_for_status()
                 for chunk in r.iter_content(chunk_size=None, decode_unicode=True):
-                    if chunk:
-                        full_response += chunk
-                        response_container.markdown(full_response + "▌")
-                        # Real-time reasoning update
+                    if not chunk:
+                        continue
+                    tick_count = chunk.count(REASON_PING)
+                    clean = chunk.replace(REASON_PING, "")
+                    if tick_count:
                         update_reasoning_ui()
-            
-            response_container.markdown(full_response)
+                    if clean:
+                        full_response += clean
+                        response_container.markdown(
+                            highlight_titles(full_response) + "▌",
+                            unsafe_allow_html=True,
+                        )
+
+            response_container.markdown(highlight_titles(full_response), unsafe_allow_html=True)
             update_reasoning_ui() # Final reasoning catch-up
             
             # Parse recommendations for card display

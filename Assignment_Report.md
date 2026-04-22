@@ -90,8 +90,8 @@ The system intelligently distinguishes between historically known users (from th
 
 ### Existing ReDial Users (Rich History)
 When a known dataset user (e.g., `A30Q8X8B1S3GGT`) connects, the `MovieDataLoader` automatically extracts their historical profile from `final_data.jsonl` and transcribed dialogues in `Conversation.txt`. 
-- **Implicit RAG Personalization:** In the RAG pipeline, the system prompt is automatically prepended with a personalized constraint block (e.g., *"This user historically liked [Movie A, Movie B] and disliked [Movie C]"*). This forces the LLM to steer new recommendations away from previously rejected concepts.
-- **Explicit Agent Deep-Dives:** The LangGraph agent possesses a dedicated `search_user_history` tool. If the user asks, *"What did you recommend to me last time?"*, the tool retrieves exact transcript chunks of their past interactions, allowing the agent to reason over past relationships and seamlessly resume the conversation.
+- **Shared Personalization Block:** Both the RAG and Agent pipelines inject the same USER PROFILE block (likes, dislikes, previously recommended titles, historical interactions) into the prompt via `build_user_profile_block`. This steers the LLM away from previously rejected concepts and prevents repeating past suggestions without requiring the agent to explicitly decide to consult history.
+- **Retrieval-Time Personalization:** On top of the prompt block, the user's top liked titles are appended to the vector-search query (`retrieval_boost`), so both pipelines surface candidates semantically adjacent to confirmed preferences before any generation occurs.
 
 ### New/Guest Users (Cold Start & Session Memory)
 For entirely new users interacting via the Streamlit UI, historical data does not exist, requiring robust short-term state management.

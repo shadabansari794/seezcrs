@@ -43,11 +43,20 @@ def build_user_profile_block(
     dislikes = history.get("recent_dislikes", [])
     historical = history.get("historical_sample", [])
 
+    rec_seen: List[str] = []
+    for entry in history.get("full_history", []) or []:
+        for title in entry.get("rec_items") or []:
+            if title and title not in rec_seen:
+                rec_seen.append(title)
+    rec_items_agg = rec_seen[:5]
+
     lines = ["USER PROFILE:"]
     if likes:
         lines.append(f"- Recently liked: {', '.join(likes)}")
     if dislikes:
         lines.append(f"- Recently disliked: {', '.join(dislikes)}")
+    if rec_items_agg:
+        lines.append(f"- Previously recommended: {', '.join(rec_items_agg)}")
     if historical:
         lines.append(f"- Historical interactions: {', '.join(historical)}")
 

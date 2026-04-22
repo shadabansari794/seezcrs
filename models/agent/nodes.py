@@ -28,6 +28,7 @@ from models.agent.intent import classify_intent
 from models.agent.state import AgentState
 from models.agent.tools import get_tools
 from models.rag.filters import extract_filters
+from models.rag.utils import build_user_profile_block
 from models.query_rewrite import rewrite_query
 from prompts.templates import PromptTemplates
 from utils.vector_store import MovieVectorStore
@@ -77,14 +78,14 @@ def build_nodes(
 
     async def rewrite_query_node(state: AgentState) -> Dict[str, Any]:
         query = state.get("current_query", "")
-        log_reasoning_step("✍️ Improving query", f"Analyzing '{query[:30]}...'")
+        # log_reasoning_step("✍️ Improving query")
         history = state.get("history") or []
         rewritten = await rewrite_query(llm_intent, query, history)
         return {"rewritten_query": rewritten}
 
     async def classify_intent_node(state: AgentState) -> Dict[str, Any]:
         query = state.get("current_query", "")
-        log_reasoning_step("🧠 Classifying intent", "Determining how to best help you...")
+        # log_reasoning_step("🧠 Classifying intent", "Determining how to best help you...")
         history = state.get("history") or []
         intent = await classify_intent(llm_intent, query, history)
         return {"intent": intent}
@@ -92,20 +93,22 @@ def build_nodes(
     def extract_preferences_node(state: AgentState) -> Dict[str, Any]:
         rewritten = state.get("rewritten_query") or state.get("current_query", "")
         user_id = state.get("user_id")
-        log_reasoning_step("📋 Extracting filters", "Looking for specific genres, actors, or eras you mentioned.")
+        # log_reasoning_step("📋 Extracting filters")
 
         filters = extract_filters(rewritten, loader=movie_loader)
-        user_history = movie_loader.get_user_history(user_id) if user_id else {}
+        profile_text, retrieval_boost = build_user_profile_block(movie_loader, user_id)
 
         logger.info(
-            "[Agent.extract_preferences] filters=%s user_history_keys=%s",
+            "[Agent.extract_preferences] filters=%s has_profile=%s boost=%r",
             filters,
-            list(user_history.keys()),
+            bool(profile_text),
+            retrieval_boost,
         )
         return {
             "preferences": {
                 "filters": filters,
-                "user_history": user_history,
+                "profile_text": profile_text,
+                "retrieval_boost": retrieval_boost,
             }
         }
 
@@ -113,14 +116,16 @@ def build_nodes(
         query = state.get("rewritten_query") or state.get("current_query", "")
         prefs = state.get("preferences") or {}
         filters = prefs.get("filters") or {}
+        boost = prefs.get("retrieval_boost") or ""
         max_recs = state.get("max_recommendations") or 5
         top_k = max(max_recs * 2, 6)
-        log_reasoning_step("🔍 Searching deep", "Scanning the movie database with your preferences.")
+        log_reasoning_step("🔍 Retrieving from db")
 
-        candidates = vector_store.search(query, top_k=top_k, **filters)
+        retrieval_query = f"{query} {boost}".strip() if boost else query
+        candidates = vector_store.search(retrieval_query, top_k=top_k, **filters)
         logger.info(
-            "[Agent.retrieve] query=%r filters=%s -> %d candidates",
-            query[:80], filters, len(candidates),
+            "[Agent.retrieve] query=%r boost=%r filters=%s -> %d candidates",
+            retrieval_query[:80], boost, filters, len(candidates),
         )
         return {"candidates": candidates}
 
@@ -141,6 +146,9 @@ def build_nodes(
         ranked = state.get("ranked") or []
         max_recs = state.get("max_recommendations") or 5
         history_str = _history_to_string(state.get("history") or [])
+        profile_text = (state.get("preferences") or {}).get("profile_text") or ""
+        if profile_text:
+            history_str = f"{profile_text}\n\n{history_str}"
         candidates_block = _format_candidate_block(ranked, limit=max(max_recs, 3))
         
         # Build the full prompt text from the template
@@ -157,7 +165,7 @@ def build_nodes(
             len(ranked), len(state.get("history") or []) // 2,
         )
         
-        tools = get_tools(movie_loader, state.get("user_id"))
+        tools = get_tools()
         # Pass the full prompt as the agent's system prompt so tone rules survive
         agent = create_react_agent(llm_main, tools=tools, prompt=full_prompt_text)
         
@@ -195,7 +203,7 @@ def build_nodes(
             intent, len(state.get("history") or []) // 2,
         )
         
-        tools = get_tools(movie_loader, state.get("user_id"))
+        tools = get_tools()
         # Pass the full prompt as the agent's system prompt so tone rules survive
         agent = create_react_agent(llm_main, tools=tools, prompt=full_prompt_text)
         

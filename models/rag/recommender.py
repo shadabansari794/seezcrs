@@ -34,6 +34,8 @@ from models.rag.utils import (
 
 logger = logging.getLogger(__name__)
 
+REASON_PING = "\x1e"
+
 
 class RAGRecommender:
     """RAG-based movie recommender using vector retrieval and LLM generation."""
@@ -164,28 +166,34 @@ class RAGRecommender:
         logger.info(f"[RAG-Stream] start user_id={user_id!r}")
         clear_reasoning_log()
         log_reasoning_step("Analyzing query")
-        
+        yield REASON_PING
+
         from models.query_rewrite import rewrite_query
         rewritten_query = await rewrite_query(self.llm_utility, query, history)
         log_reasoning_step("Classifying intent")
-        
+        yield REASON_PING
+
         intent = await classify_intent(self.llm_utility, rewritten_query, history)
-        
+
         profile_text, retrieval_boost = self._build_user_profile_block(user_id)
-        
+
         if intent != INTENT_RECOMMEND:
             log_reasoning_step("Chatting")
+            yield REASON_PING
             retrieved_movies: List[Dict[str, Any]] = []
         else:
             log_reasoning_step("Searching catalog")
+            yield REASON_PING
             retrieval_query = f"{rewritten_query} {retrieval_boost}".strip() if retrieval_boost else rewritten_query
             filters = extract_filters(rewritten_query, loader=self.movie_loader)
             retrieved_movies = await self._retrieve_relevant_movies(retrieval_query, top_k=max_recommendations * 4, filters=filters)
             if self.reranker and retrieved_movies:
                 log_reasoning_step("Ranking candidates")
+                yield REASON_PING
                 retrieved_movies = self.reranker.rerank(rewritten_query, retrieved_movies, top_k=max_recommendations)
 
         log_reasoning_step("Generating response")
+        yield REASON_PING
         conv_history = self._format_conversation_history(history)
         if profile_text:
             conv_history = f"{profile_text}\n\n{conv_history}"
