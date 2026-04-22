@@ -63,7 +63,8 @@ Open these files before the interview:
 6. [models/agent/nodes.py](models/agent/nodes.py)
    - Node closures: classify_intent, extract_preferences, retrieve, rank_score, explain, chat_reply.
    - [models/agent/intent.py](models/agent/intent.py): LLM intent classifier (temperature=0).
-   - [models/agent/ranking.py](models/agent/ranking.py): heuristic scorer (similarity + history affinity + recency − negative signal).
+   - [models/agent/tools.py](models/agent/tools.py): LangChain tools (search_user_history, search_imdb, search_web).
+   - [utils/reranker.py](utils/reranker.py): Simple keyword-overlap booster used by both RAG and Agent.
 
 7. [utils/vector_store.py](utils/vector_store.py)
    - ChromaDB and SentenceTransformer retrieval.
@@ -265,7 +266,9 @@ Open [models/agent/recommender.py](models/agent/recommender.py).
 Explain:
 
 > The agent path builds messages and invokes a LangGraph graph. Unlike RAG, it
-> does not always retrieve first. The LLM decides whether to call tools.
+> does not always retrieve first. The final output nodes (`explain` and `chat_reply`)
+> use a **ReAct loop** to call tools like search_user_history or search_imdb
+> before giving the final answer.
 
 Open [models/agent/graph.py](models/agent/graph.py).
 
@@ -281,11 +284,11 @@ Open [models/agent/nodes.py](models/agent/nodes.py).
 Explain each node:
 
 - `classify_intent`: LLM (temperature=0) picks one of `recommend | chat | clarify | closing`.
-- `extract_preferences`: pulls filters (genre/year/director/actor) and looks up the user's liked/disliked history.
-- `retrieve`: semantic search via the vector store with those filters applied.
-- `rank_score`: heuristic score from [models/agent/ranking.py](models/agent/ranking.py) — similarity, history affinity, recency, negative signal.
-- `explain`: LLM renders the top-ranked candidates as `**Title** - reason`.
-- `chat_reply`: LLM-only reply for non-recommend turns; no retrieval, no ranking.
+- `extract_preferences`: pulls filters (genre/year/director/actor) and picks up user likes/dislikes from history.
+- `retrieve`: semantic search via ChromaDB.
+- `rank_score`: uses [utils/reranker.py](utils/reranker.py) to boost keyword-overlap (simple and fast).
+- `explain`: uses a ReAct agent to render the response. It can call the **search_user_history** tool if it needs to verify past interactions or **search_imdb** for cast details.
+- `chat_reply`: uses a ReAct agent for conversational turns. If the user asks a question about a movie (IMDb) or the web, the agent can call **search_imdb** or **search_web** dynamically.
 
 Point out that `AQP1VPK16SVWM` is an old dataset user. `extract_preferences`
 picks up their likes/dislikes from the loader automatically.
@@ -319,7 +322,10 @@ Use this as your verbal summary:
 5. If model_type is agent:
    - Build messages with history.
    - Run LangGraph.
-   - LLM may call tools such as search_movies or get_user_history.
+   - Output nodes (`explain`/`chat_reply`) loop with the LLM to call tools:
+     - `search_user_history`: scans Conversation.txt and prior recs.
+     - `search_imdb`: factual lookups on cast, directors, and plot.
+     - `search_web`: fallback for latest news or obscure topics.
    - Return final assistant response.
 6. Server appends user and assistant messages to memory.
 7. Server parses bold movie titles into structured recommendations.
@@ -411,8 +417,9 @@ project uses ChromaDB to store movie embeddings and retrieve similar movies.
 
 RAG follows a fixed flow: retrieve, prompt, generate.
 
-An agent can decide actions dynamically, such as whether to call a search tool,
-fetch user history, or answer directly.
+An agent can decide actions dynamically. In this project, the Agent uses a **ReAct
+loop** in its output nodes to call tools like `search_imdb` for movie details,
+`search_web` for news, or `search_user_history` for personalized context.
 
 ### What is LangGraph?
 
@@ -457,7 +464,8 @@ It supports two things:
 - Per-user concurrency control.
 - Structured JSON output from the LLM.
 - Validate recommended titles against the catalog.
-- Add TMDB/IMDb metadata.
+- Add richer TMDB/IMDb metadata.
+- Add external tool consistency checks (e.g. valid tool arg validation).
 - Add offline evaluation.
 - Add online feedback such as thumbs up/down.
 
@@ -516,13 +524,21 @@ curl -X POST "http://localhost:8000/recommend" \
   -d "{\"query\":\"recommend something eerie but not confusing\",\"user_id\":\"demo-backup-agent\",\"model_type\":\"agent\"}"
 ```
 
-Known old user request:
-
-```bash
-curl -X POST "http://localhost:8000/recommend" \
-  -H "Content-Type: application/json" \
-  -d "{\"query\":\"recommend something suspenseful but avoid Apollo 18\",\"user_id\":\"AQP1VPK16SVWM\",\"model_type\":\"agent\"}"
-```
+Known old user with tool use:
+ 
+ ```bash
+ curl -X POST "http://localhost:8000/recommend" \
+   -H "Content-Type: application/json" \
+   -d "{\"query\":\"What movies did you recommend to me last time?\",\"user_id\":\"A30Q8X8B1S3GGT\",\"model_type\":\"agent\"}"
+ ```
+ 
+ IMDb lookup request:
+ 
+ ```bash
+ curl -X POST "http://localhost:8000/recommend" \
+   -H "Content-Type: application/json" \
+   -d "{\"query\":\"Who directed Inception and who is in the cast?\",\"user_id\":\"demo-imdb\",\"model_type\":\"agent\"}"
+ ```
 
 Logs:
 

@@ -56,7 +56,7 @@ Data limitations are reflected in the implementation:
 |   `-- agent/
 |       |-- recommender.py   Agent coordinator class
 |       |-- graph.py         LangGraph construction
-|       |-- tools.py         Tool definitions
+|       |-- tools.py         Agentic tools: IMDb, Web Search, User History
 |       |-- messages.py      Prompt/message assembly
 |       `-- state.py         AgentState definition
 |-- prompts/
@@ -99,7 +99,7 @@ FastAPI app
   |     extract filters -> vector search -> prompt -> OpenAI
   |
   `-- agent:
-        prompt -> LangGraph agent -> optional tools -> OpenAI
+        prompt -> LangGraph agent -> dynamic tools (History, IMDb, Web) -> OpenAI
   |
   |-- appends user and assistant messages to memory
   `-- returns RecommendationResponse
@@ -158,9 +158,9 @@ each turn to one of two branches:
 Stage details:
 
 1. [models/agent/intent.py](models/agent/intent.py) — LLM picks `recommend | chat | clarify | closing`.
-2. [models/agent/nodes.py](models/agent/nodes.py) — `extract_preferences` pulls filters via [models/rag/filters.py](models/rag/filters.py) and user history via the loader; `retrieve` hits Chroma through the vector store.
-3. [models/agent/ranking.py](models/agent/ranking.py) — heuristic `score_candidates`: similarity + history affinity (liked director/genre overlap) − negative signal (disliked titles) + recency.
-4. `explain` calls the main LLM with the ranked shortlist to produce `**Title** - reason` recommendations.
+2. [models/agent/nodes.py](models/agent/nodes.py) — `extract_preferences` pulls filters via [models/rag/filters.py](models/rag/filters.py) and user history; `retrieve` hits Chroma.
+3. `rank_score` uses the [utils/reranker.py](utils/reranker.py) simple keyword-overlap heuristic (same as RAG).
+4. `explain` and `chat_reply` wrap a **ReAct loop** using [models/agent/tools.py](models/agent/tools.py) to access user history, IMDb facts, or web search.
 5. Parse recommendations with the shared RAG parser.
 
 The graph is assembled in [models/agent/graph.py](models/agent/graph.py) from nodes built in [models/agent/nodes.py](models/agent/nodes.py).
@@ -438,6 +438,7 @@ All settings are read from environment variables or `.env`. See
 | `MAX_TOKENS` | `350` | Response length cap. |
 | `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Local embedding model. |
 | `VECTOR_STORE_PATH` | `./data/vector_store` | Chroma persistence path. |
+| `TAVILY_API_KEY` | N/A | Required for the `search_web` agent tool. |
 | `API_HOST` | `0.0.0.0` | Uvicorn host. |
 | `API_PORT` | `8000` | Uvicorn port. |
 | `LOG_LEVEL` | `INFO` | Python logging level. |

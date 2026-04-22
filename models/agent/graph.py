@@ -1,7 +1,8 @@
 """LangGraph construction for the structured agent recommender.
 
 Flow:
-
+                        query rewrute
+                              |
                        classify_intent
                       /              \\
            (recommend)                (chat | clarify | closing)
@@ -47,6 +48,7 @@ def create_agent_graph(nodes: Dict[str, Callable]) -> Any:
     rank_score, explain, chat_reply — as produced by ``build_nodes``.
     """
     required = {
+        "rewrite_query",
         "classify_intent",
         "extract_preferences",
         "retrieve",
@@ -60,6 +62,7 @@ def create_agent_graph(nodes: Dict[str, Callable]) -> Any:
 
     workflow = StateGraph(AgentState)
 
+    workflow.add_node("rewrite_query", nodes["rewrite_query"])
     workflow.add_node("classify_intent", nodes["classify_intent"])
     workflow.add_node("extract_preferences", nodes["extract_preferences"])
     workflow.add_node("retrieve", nodes["retrieve"])
@@ -67,7 +70,8 @@ def create_agent_graph(nodes: Dict[str, Callable]) -> Any:
     workflow.add_node("explain", nodes["explain"])
     workflow.add_node("chat_reply", nodes["chat_reply"])
 
-    workflow.set_entry_point("classify_intent")
+    workflow.set_entry_point("rewrite_query")
+    workflow.add_edge("rewrite_query", "classify_intent")
 
     workflow.add_conditional_edges(
         "classify_intent",

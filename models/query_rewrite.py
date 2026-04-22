@@ -13,19 +13,10 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
-from langchain_core.messages import HumanMessage, SystemMessage
-
 from app.schemas import Message
+from prompts.templates import PromptTemplates
 
 logger = logging.getLogger(__name__)
-
-
-_SYSTEM_PROMPT = """You rewrite the USER'S CURRENT MESSAGE into a standalone movie-search query.
-
-- If it references prior turns ("that", "those", "another", "more like", "lighter", "darker"), expand it using the recent conversation into a self-contained phrase.
-- If it is already self-contained (describes a mood, genre, actor, director, or title), return it unchanged.
-- Preserve specific names (actors, directors, titles, years, decades) verbatim.
-- Output ONLY the rewritten query. No preamble, no quotes, no explanation."""
 
 
 async def rewrite_query(
@@ -44,17 +35,8 @@ async def rewrite_query(
         context_lines.append(f"{role}: {msg.content}")
     context_block = "\n".join(context_lines) or "(no prior turns)"
 
-    prompt = [
-        SystemMessage(content=_SYSTEM_PROMPT),
-        HumanMessage(
-            content=(
-                f"Recent conversation:\n{context_block}\n\n"
-                f"Current user message: {q}\n\nRewritten search query:"
-            )
-        ),
-    ]
-
-    response = await llm.ainvoke(prompt)
+    chain = PromptTemplates().get_query_rewrite_prompt() | llm
+    response = await chain.ainvoke({"context_block": context_block, "query": q})
     rewritten = (getattr(response, "content", "") or "").strip().strip("\"'")
     if not rewritten:
         return q

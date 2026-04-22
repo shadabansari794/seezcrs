@@ -10,8 +10,6 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
-from langchain_core.messages import HumanMessage, SystemMessage
-
 from app.schemas import Message
 from models.agent.state import (
     INTENT_CHAT,
@@ -19,24 +17,11 @@ from models.agent.state import (
     INTENT_CLOSING,
     INTENT_RECOMMEND,
 )
+from prompts.templates import PromptTemplates
 
 logger = logging.getLogger(__name__)
 
 VALID_INTENTS = {INTENT_CHAT, INTENT_RECOMMEND, INTENT_CLARIFY, INTENT_CLOSING}
-
-
-_SYSTEM_PROMPT = """You classify the USER'S CURRENT MESSAGE in a movie recommendation chat.
-
-Output exactly one label, lowercase, no punctuation, no explanation:
-
-- recommend: user asks for suggestions, names a mood/genre/actor/director they want, asks for "another", "more like", "something else", "what should I watch".
-- chat: user greets, shares an opinion, reacts to a movie, small talk, describes something they watched, asks a factual follow-up about an already-recommended movie (e.g. "is it more silly or sentimental?").
-- clarify: user's ask is too vague to act on (e.g. a bare "recommend something").
-- closing: thanks, goodbye, "that's enough", "will do".
-
-If unsure between chat and recommend, pick recommend only when the user is clearly requesting a new suggestion. Otherwise pick chat.
-
-Return only: recommend | chat | clarify | closing"""
 
 
 async def classify_intent(
@@ -57,17 +42,8 @@ async def classify_intent(
             context_lines.append(f"{role}: {msg.content}")
     context_block = "\n".join(context_lines) or "(no prior turns)"
 
-    prompt = [
-        SystemMessage(content=_SYSTEM_PROMPT),
-        HumanMessage(
-            content=(
-                f"Recent conversation:\n{context_block}\n\n"
-                f"Current user message: {q}\n\nLabel:"
-            )
-        ),
-    ]
-
-    response = await llm.ainvoke(prompt)
+    chain = PromptTemplates().get_intent_classify_prompt() | llm
+    response = await chain.ainvoke({"context_block": context_block, "query": q})
     raw = (getattr(response, "content", "") or "").strip().lower()
     label = raw.split()[0] if raw else ""
     label = label.strip(".,!? \"'")

@@ -13,10 +13,10 @@ except ImportError:
     CHROMA_AVAILABLE = False
 
 try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
+    from langchain_openai import OpenAIEmbeddings
+    OPENAI_EMBEDDINGS_AVAILABLE = True
 except ImportError:
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
+    OPENAI_EMBEDDINGS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +43,16 @@ class MovieVectorStore:
         self.collection_name = collection_name
         
         # Initialize embedding model
-        if SENTENCE_TRANSFORMERS_AVAILABLE:
-            self.embedder = SentenceTransformer(embedding_model)
+        from app.config import settings
+        if OPENAI_EMBEDDINGS_AVAILABLE:
+            if not settings.openai_api_key:
+                logger.warning("OpenAI API key not set, embeddings will fail if invoked.")
+            self.embedder = OpenAIEmbeddings(
+                model=embedding_model,
+                openai_api_key=settings.openai_api_key
+            )
         else:
-            logger.warning("sentence-transformers not available, using mock embeddings")
+            logger.warning("langchain-openai not available, using mock embeddings")
             self.embedder = None
         
         # Initialize vector store
@@ -135,12 +141,11 @@ class MovieVectorStore:
         
         # Create embeddings
         if self.embedder:
-            embeddings = self.embedder.encode(texts, show_progress_bar=True)
-            embeddings = embeddings.tolist()
+            embeddings = self.embedder.embed_documents(texts)
         else:
             # Mock embeddings for testing
             import random
-            embeddings = [[random.random() for _ in range(384)] for _ in texts]
+            embeddings = [[random.random() for _ in range(3072)] for _ in texts]
         
         # Store in vector DB
         if self.collection:
@@ -209,10 +214,10 @@ class MovieVectorStore:
             List of movie dictionaries (up to top_k)
         """
         if self.embedder:
-            query_embedding = self.embedder.encode([query])[0].tolist()
+            query_embedding = self.embedder.embed_query(query)
         else:
             import random
-            query_embedding = [random.random() for _ in range(384)]
+            query_embedding = [random.random() for _ in range(3072)]
 
         fetch_k = top_k * 4
 

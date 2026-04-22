@@ -1,8 +1,9 @@
 """
 FastAPI application for movie recommendation system.
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 import logging
 import time
@@ -19,6 +20,7 @@ from utils.vector_store import MovieVectorStore
 from models.rag import RAGRecommender
 from models.agent import AgentRecommender
 from prompts.templates import PromptTemplates
+from utils.reranker import MovieReranker
 
 # Configure logging (console + app.log file)
 logging.basicConfig(
@@ -87,14 +89,15 @@ async def lifespan(app: FastAPI):
     else:
         logger.info(f"Vector store already has {stats['total_movies']} movies")
 
-    # Build few-shot block from real LLM-Redial dialogues (if available)
-    dialogue_snippets = movie_loader.get_conversation_examples(n=3)
-    few_shot_examples = PromptTemplates.format_conversation_examples(dialogue_snippets)
-    if few_shot_examples:
-        logger.info(f"Loaded {len(dialogue_snippets)} few-shot dialogue examples")
+    # Build few-shot block from curated examples (to fix repetitive persona issues)
+    few_shot_examples = PromptTemplates.format_conversation_examples()
+    logger.info("Using curated few-shot dialogue examples for persona consistency")
+
+    # Initialize reranker
+    reranker = MovieReranker()
 
     # Initialize recommenders
-    rag_recommender = RAGRecommender(vector_store, movie_loader, few_shot_examples=few_shot_examples)
+    rag_recommender = RAGRecommender(vector_store, movie_loader, reranker=reranker, few_shot_examples=few_shot_examples)
     agent_recommender = AgentRecommender(vector_store, movie_loader, few_shot_examples=few_shot_examples)
 
     # Per-user conversation memory (in-process; lost on restart)
@@ -147,7 +150,10 @@ async def health_check():
     return {
         "status": "healthy",
         "vector_store": stats,
-        "llm_model": settings.llm_model
+        "models": {
+            "main": settings.llm_model_main,
+            "utility": settings.llm_model_utility
+        }
     }
 
 
@@ -212,6 +218,48 @@ async def recommend_movies(request: RecommendationRequest):
 
     except Exception as e:
         logger.error(f"Error in recommend_movies: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/recommend/stream")
+async def recommend_movies_stream(request: RecommendationRequest):
+    """
+    Stream movie recommendations token-by-token.
+    """
+    try:
+        # Select recommender
+        if request.model_type == "rag":
+            recommender = rag_recommender
+        elif request.model_type == "agent":
+            recommender = agent_recommender
+        else:
+            raise HTTPException(status_code=400, detail="Invalid model_type")
+
+        # Resolve history
+        history = app.state.conversations.setdefault(request.user_id, [])
+
+        async def generate():
+            full_response = []
+            async for chunk in recommender.stream_recommendation(
+                query=request.query,
+                history=history,
+                max_recommendations=request.max_recommendations,
+                user_id=request.user_id,
+            ):
+                full_response.append(chunk)
+                yield chunk
+
+            # After stream finishes, persist to history
+            final_text = "".join(full_response)
+            history.append(Message(role="user", content=request.query))
+            history.append(Message(role="assistant", content=final_text))
+            
+            logger.info(f"[/recommend/stream] DONE user_id={request.user_id!r} history_len={len(history)}")
+
+        return StreamingResponse(generate(), media_type="text/plain")
+
+    except Exception as e:
+        logger.error(f"Error in recommend_movies_stream: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

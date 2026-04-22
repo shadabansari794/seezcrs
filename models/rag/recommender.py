@@ -6,7 +6,7 @@ retrieval, prompt-history formatting, user profile rendering, and response
 parsing.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 import logging
 
 from langchain_openai import ChatOpenAI
@@ -17,6 +17,7 @@ from app.schemas import Message, MovieRecommendation
 from data.loader import MovieDataLoader
 from prompts.templates import PromptTemplates
 from utils.vector_store import MovieVectorStore
+from utils.reranker import MovieReranker
 
 from models.agent.intent import classify_intent
 from models.agent.state import INTENT_RECOMMEND
@@ -40,18 +41,21 @@ class RAGRecommender:
         self,
         vector_store: MovieVectorStore,
         movie_loader: MovieDataLoader,
+        reranker: Optional[MovieReranker] = None,
         few_shot_examples: Optional[str] = None,
     ):
         self.vector_store = vector_store
         self.movie_loader = movie_loader
+        self.reranker = reranker
         self.prompt_templates = PromptTemplates(few_shot_examples=few_shot_examples)
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
-        # Cheap, deterministic classifier so chit-chat turns skip retrieval.
-        self.llm_intent = ChatOpenAI(
-            model=settings.llm_model,
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=settings.request_timeout)
+        # Utility tasks (intent, rewrite) need deterministic accuracy + speed.
+        self.llm_utility = ChatOpenAI(
+            model=settings.llm_model_utility,
             temperature=0,
             api_key=settings.openai_api_key,
-            max_tokens=8,
+            max_tokens=300, # Sufficient for query rewrite
+            timeout=settings.request_timeout,
         )
 
     def _build_user_profile_block(self, user_id: Optional[str]) -> Tuple[str, str]:
@@ -81,10 +85,13 @@ class RAGRecommender:
         """Generate a conversational recommendation using the RAG pipeline."""
         logger.info(
             f"[RAG] start user_id={user_id!r} history_turns={len(history)} "
-            f"max_recs={max_recommendations}"
+            f"max_recs={max_recommendations} query='{query}'"
         )
 
-        intent = await classify_intent(self.llm_intent, query, history)
+        from models.query_rewrite import rewrite_query
+        rewritten_query = await rewrite_query(self.llm_utility, query, history)
+
+        intent = await classify_intent(self.llm_utility, rewritten_query, history)
         logger.info(f"[RAG] intent={intent!r}")
 
         profile_text, retrieval_boost = self._build_user_profile_block(user_id)
@@ -94,22 +101,29 @@ class RAGRecommender:
             # in the RAG system prompt handle these fine without a movies block.
             retrieved_movies: List[Dict[str, Any]] = []
         else:
-            retrieval_query = f"{query} {retrieval_boost}".strip() if retrieval_boost else query
-            filters = extract_filters(query, loader=self.movie_loader)
+            retrieval_query = f"{rewritten_query} {retrieval_boost}".strip() if retrieval_boost else rewritten_query
+            
+            filters = extract_filters(rewritten_query, loader=self.movie_loader)
             if filters:
                 logger.info(f"[RAG] extracted filters: {filters}")
 
             retrieved_movies = await self._retrieve_relevant_movies(
                 retrieval_query,
-                top_k=max_recommendations * 2,
+                top_k=max_recommendations * 4,
                 filters=filters,
             )
+
+            # Rerank candidates with cross-encoder
+            if self.reranker and retrieved_movies:
+                retrieved_movies = self.reranker.rerank(
+                    rewritten_query, retrieved_movies, top_k=max_recommendations
+                )
 
         conv_history = self._format_conversation_history(history)
         if profile_text:
             conv_history = f"{profile_text}\n\n{conv_history}"
 
-        chat_prompt = self.prompt_templates.get_rag_chat_prompt()
+        chat_prompt = self.prompt_templates.get_rag_prompt()
         messages = chat_prompt.format_messages(
             conversation_history=conv_history or "No previous conversation.",
             movies_context=PromptTemplates.format_movies_context(
@@ -119,11 +133,11 @@ class RAGRecommender:
         )
 
         logger.info(
-            f"[RAG] calling LLM model={settings.llm_model} "
+            f"[RAG] calling LLM model={settings.llm_model_main} "
             f"messages={len(messages)} candidates={len(retrieved_movies[:max_recommendations])}"
         )
         response = await self.client.chat.completions.create(
-            model=settings.llm_model,
+            model=settings.llm_model_main,
             messages=to_openai_messages(messages),
             temperature=settings.temperature,
             max_tokens=settings.max_tokens,
@@ -135,7 +149,55 @@ class RAGRecommender:
             f"tokens_out={getattr(usage, 'completion_tokens', '?')} "
             f"response_len={len(content or '')}"
         )
+        logger.info(f"[RAG] [OUTPUT] {content[:250]}...")
         return content
+
+    async def stream_recommendation(
+        self,
+        query: str,
+        history: List[Message],
+        max_recommendations: int = 5,
+        user_id: Optional[str] = None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream conversational recommendations for real-time low-latency UI."""
+        logger.info(f"[RAG-Stream] start user_id={user_id!r}")
+        
+        from models.query_rewrite import rewrite_query
+        rewritten_query = await rewrite_query(self.llm_utility, query, history)
+        intent = await classify_intent(self.llm_utility, rewritten_query, history)
+        
+        profile_text, retrieval_boost = self._build_user_profile_block(user_id)
+        
+        if intent != INTENT_RECOMMEND:
+            retrieved_movies: List[Dict[str, Any]] = []
+        else:
+            retrieval_query = f"{rewritten_query} {retrieval_boost}".strip() if retrieval_boost else rewritten_query
+            filters = extract_filters(rewritten_query, loader=self.movie_loader)
+            retrieved_movies = await self._retrieve_relevant_movies(retrieval_query, top_k=max_recommendations * 4, filters=filters)
+            if self.reranker and retrieved_movies:
+                retrieved_movies = self.reranker.rerank(rewritten_query, retrieved_movies, top_k=max_recommendations)
+
+        conv_history = self._format_conversation_history(history)
+        if profile_text:
+            conv_history = f"{profile_text}\n\n{conv_history}"
+
+        chat_prompt = self.prompt_templates.get_rag_prompt()
+        messages = chat_prompt.format_messages(
+            conversation_history=conv_history or "No previous conversation.",
+            movies_context=PromptTemplates.format_movies_context(retrieved_movies[:max_recommendations]),
+            user_query=query,
+        )
+
+        response = await self.client.chat.completions.create(
+            model=settings.llm_model_main,
+            messages=to_openai_messages(messages),
+            temperature=settings.temperature,
+            max_tokens=settings.max_tokens,
+            stream=True
+        )
+        async for chunk in response:
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
 
     def parse_recommendations(self, response_text: str) -> List[MovieRecommendation]:
         """Parse structured recommendations from response text."""

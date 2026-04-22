@@ -24,6 +24,7 @@ class AgentState(TypedDict, total=False):
 
     # Pipeline outputs — one node writes each key
     intent: str                              # classify_intent
+    rewritten_query: str                     # extract_preferences
     preferences: Dict[str, Any]              # extract_preferences
     candidates: List[Dict[str, Any]]         # retrieve
     ranked: List[Dict[str, Any]]             # rank_score (adds "score" key)

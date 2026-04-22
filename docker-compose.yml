@@ -10,17 +10,19 @@ services:
       - "8000:8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - LLM_MODEL_MAIN=${LLM_MODEL_MAIN:-gpt-4o}
+      - LLM_MODEL_UTILITY=${LLM_MODEL_UTILITY:-gpt-4o-mini}
       - TEMPERATURE=${TEMPERATURE:-0.7}
-      - MAX_TOKENS=${MAX_TOKENS:-1000}
-      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      - MAX_TOKENS=${MAX_TOKENS:-2000}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-large}
       - VECTOR_STORE_TYPE=${VECTOR_STORE_TYPE:-chroma}
       - VECTOR_STORE_PATH=${VECTOR_STORE_PATH:-./data/vector_store}
       - API_HOST=${API_HOST:-0.0.0.0}
       - API_PORT=${API_PORT:-8000}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - MAX_CONCURRENT_REQUESTS=${MAX_CONCURRENT_REQUESTS:-10}
-      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-30}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-120}
     volumes:
       # Persist vector store data
       - vector-store-data:/app/data/vector_store
@@ -35,6 +37,23 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    networks:
+      - movie-crs-network
+
+  movie-crs-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: movie-crs-web
+    command: ["streamlit", "run", "app_streamlit.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://movie-crs-api:8000/recommend
+    volumes:
+      - logs-data:/app/logs
+    depends_on:
+      - movie-crs-api
     networks:
       - movie-crs-network
 

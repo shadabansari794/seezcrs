@@ -39,6 +39,7 @@ COPY models/ ./models/
 COPY data/ ./data/
 COPY prompts/ ./prompts/
 COPY utils/ ./utils/
+COPY scripts/ ./scripts/
 
 # Create necessary directories
 RUN mkdir -p data/vector_store logs

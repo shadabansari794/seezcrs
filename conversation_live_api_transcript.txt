@@ -1,166 +1,120 @@
-Movie CRS Live API Conversation Transcript
+### SCENARIO: 1. New User Exploration (RAG) (User: new_user_rag_multi, Mode: RAG)
+**TURN 1**
+USER: I am looking for a heartwarming family movie.
+ASSISTANT:
+Arthur Christmas is a delightful choice if you're after a heartwarming family movie. The film beautifully captures the spirit of the holidays with its charming story about Santa's youngest son, Arthur, embarking on a mission to deliver a forgotten present. It's filled with humor and warmth, perfect for a cozy family night. Another gem that comes to mind is Eloise At Christmastime, which brings a playful and spirited adventure set in the iconic Plaza Hotel, sure to put a smile on everyone's face.
+*Latency: 23696ms*
+------------------------------
+**TURN 2**
+USER: Can you suggest something similar but more recent?
+ASSISTANT:
+Northpole might be just what you're looking for. It brings a magical twist to the Christmas spirit, focusing on the enchanting city where Santa and his elves live. The story unfolds with a lovely message about the importance of family and togetherness during the holidays. If you enjoyed the warmth of Arthur Christmas, this one will definitely resonate with its festive charm.
+*Latency: 13476ms*
+------------------------------
+**TURN 3**
+USER: Actually, I'd prefer if it had some magic or fantasy elements.
+ASSISTANT:
+The Year Without a Santa Claus might be right up your alley. This classic animation is filled with whimsical fantasy as Mrs. Claus and her quirky elf companions, Jingle and Jangle, embark on a mission to reignite the Christmas spirit. It's a charming tale that combines magical elements with a heartwarming message. Another enchanting option is Santa Clause 2, where the magic of Santa's world is woven beautifully into a story about love and holiday traditions, offering a delightful blend of fantasy and family fun.
+*Latency: 13020ms*
+------------------------------
 
-Source: live /recommend API
-Format: numbered test cases with multi-turn User/Agent exchanges.
+================================================================================
 
-0
+### SCENARIO: 2. Factual Deep-Dive (Agent + Tools) (User: agent_tools_multi, Mode: AGENT)
+**TURN 1**
+USER: Who directed the movie Inception?
+ASSISTANT:
+It seems there was an issue retrieving the information. However, I can tell you that Inception was directed by Christopher Nolan. He's known for his intricate storytelling and stunning visuals.
+*Latency: 8704ms*
+------------------------------
+**TURN 2**
+USER: What other famous movies did they direct?
+ASSISTANT:
+Christopher Nolan has directed several notable films. Some of his most famous works include a mix of mind-bending narratives and visually stunning experiences. Would you like to know more about his films in a specific genre or style?
+*Latency: 2786ms*
+------------------------------
+**TURN 3**
+USER: Which of those are sci-fi movies?
+ASSISTANT:
+Christopher Nolan has directed a few sci-fi films that are quite popular. Inception is one of them, known for its dream-within-a-dream concept and stunning visual effects. Another is Interstellar, which explores space travel and the emotional bonds that transcend time. Both films have that signature Nolan touch with complex storytelling and breathtaking visuals.
+*Latency: 4113ms*
+------------------------------
+**TURN 4**
+USER: What is the plot of Interstellar? Use IMDb.
+ASSISTANT:
+It seems there was an issue retrieving the plot from IMDb. However, I can tell you that Interstellar is about a group of explorers who undertake a mission through a wormhole in space to ensure humanity's survival. The film beautifully combines themes of love, sacrifice, and the unyielding human spirit in the face of cosmic challenges.
+*Latency: 4353ms*
+------------------------------
 
-Test Case: New user with RAG
-model_type: rag
-user_id: demo-rag-new
+================================================================================
 
-Turn 1
-User: Hi, I'm in the mood for something cozy. I recently watched White Christmas and really liked the warm music and family feeling.
-Agent: Oh, "White Christmas" really does have that cozy, heartwarming vibe! If you're in the mood for something similar, you might enjoy these:
+### SCENARIO: 3. History & Preference Recall (Agent) (User: A30Q8X8B1S3GGT, Mode: AGENT)
+**TURN 1**
+USER: I'm in the mood for an action movie like the ones in my history.
+ASSISTANT:
+For a thrilling action-packed experience, "Commando" might be just what you're in the mood for. Arnold Schwarzenegger delivers a powerhouse performance as John Matrix, a former leader of a special commando unit, who is forced back into action in a mission filled with excitement and intense sequences. It’s the kind of classic action movie that keeps you on the edge of your seat, and if you’re a fan of high-stakes storytelling with a charismatic lead, this might be perfect for you.
 
-**Christmas with the Kranks** - It's a fun family comedy that captures the holiday spirit with plenty of laughs and heartwarming moments.  
-**Northpole** - This has a magical touch with a focus on family and the importance of the Christmas spirit, perfect for a cozy watch.  
-**The Search For Santa Paws** - A delightful adventure that showcases friendship and the true meaning of Christmas, making it a heartwarming choice.
-Recommendations: Christmas with the Kranks, Northpole, The Search For Santa Paws
+Alternatively, "Hard Target" offers a gripping ride through the streets of New Orleans with Jean-Claude Van Damme at the helm. Directed by the legendary John Woo, it’s filled with stylish action scenes and a unique plot that involves a deadly game of human hunting. The film's mix of crime and thriller elements delivers both suspense and adrenaline-pumping action, which should align well with your taste if you're looking for something intense and engaging.
+*Latency: 10763ms*
+------------------------------
+**TURN 2**
+USER: I've seen Commando. Suggest something more modern.
+ASSISTANT:
+For a more modern twist on the action genre, "The Expendables" is a fantastic pick. It's a high-octane adventure that brings together a powerhouse cast including Sylvester Stallone, Jason Statham, and Jet Li. The film is packed with explosive sequences and the kind of camaraderie and banter that makes for a fun ride. If you're looking for something that celebrates classic action hero vibes but with a contemporary flair, this one is a real treat.
 
-Turn 2
-User: Could you recommend something with that same light, older-movie comfort?
-Agent: **By the Light of the Silvery Moon** - This charming musical has that warm, family-friendly vibe and features delightful moments that echo the cozy feeling of "White Christmas."
-Recommendations: By the Light of the Silvery Moon
+If you're intrigued by a mix of action and suspense with a unique plot, "Hard Target" could also be a great choice. Directed by John Woo, it features Jean-Claude Van Damme in a thrilling narrative about a deadly human hunt. The film's stylish action scenes and intense storyline deliver both suspense and adrenaline-pumping excitement, perfect for anyone craving something engaging and intense.
+*Latency: 11916ms*
+------------------------------
+**TURN 3**
+USER: Wait, what movies did you recommend to me in our past interactions before this one?
+ASSISTANT:
+In our past interactions, I recommended "The Lord of the Rings: The Return of the King" and "Pirates of the Golden Age Movie Collection: Against All Flags / Buccaneer's Girl / Yankee Buccaneer / Double Crossbones." If you need any more help or suggestions, feel free to ask!
+*Latency: 3698ms*
+------------------------------
+**TURN 4**
+USER: Is there anything similar being announced lately?
+ASSISTANT:
+There are some interesting action movies on the horizon. "Believer 2" is coming out this fall, featuring a crime action storyline about a fierce battle against a drug cartel. Another one to look out for is "Lift," set to release in January 2024, which involves an international heist crew trying to prevent a terrorist attack mid-flight. Both movies promise a mix of suspense and thrilling action.
+*Latency: 17279ms*
+------------------------------
 
-Turn 3
-User: That sounds fun. Is it more silly or more sentimental?
-Agent: It's definitely more sentimental, with a focus on family and heartwarming moments. It balances charming musical numbers with sweet, touching scenes that evoke that cozy feeling.
-Recommendations: 
+================================================================================
 
-Turn 4
-User: Nice. Give me one more option, but keep it family-friendly.
-Agent: **Family Ties: Season 1** - This classic sitcom has a great mix of humor and heart, focusing on family dynamics in a lighthearted way that’s perfect for cozy viewing.
-Recommendations: Family Ties: Season 1
+### SCENARIO: 4. Web & News Exploration (Agent) (User: web_explorer_multi, Mode: AGENT)
+**TURN 1**
+USER: Hi! What are the biggest movie announcements this month?
+ASSISTANT:
+This month has some exciting movie announcements. Martin Scorsese's "Killers of the Flower Moon" is one of the highly anticipated releases, making its way to theaters. There's also a new installment in "The Exorcist" series called "The Exorcist: Believer." Additionally, Taylor Swift's concert film "The Eras Tour" is hitting the big screen, which is a treat for her fans. October is definitely shaping up to be an interesting month for movie lovers!
+*Latency: 9962ms*
+------------------------------
+**TURN 2**
+USER: Are there any updates on the next Marvel movie?
+ASSISTANT:
+The next big Marvel movie to look out for is "The Marvels," which premiered on November 10, 2023. It features Carol Danvers, Monica Rambeau, and Kamala Khan teaming up for an action-packed adventure that spans across the cosmos. Their powers become entangled, leading them on a quest filled with humor and heart. It's directed by Nia DaCosta and includes appearances by Nick Fury and a new villain, Dar-Benn. The dynamic between these characters adds a fresh vibe to the Marvel Cinematic Universe.
+*Latency: 8209ms*
+------------------------------
+**TURN 3**
+USER: Which actors are confirmed for it?
+ASSISTANT:
+It seems like there was an issue finding the cast details for "The Marvels" on IMDb. However, from what I know, Brie Larson is reprising her role as Carol Danvers (Captain Marvel), Teyonah Parris plays Monica Rambeau, and Iman Vellani is Kamala Khan (Ms. Marvel). Samuel L. Jackson is also back as Nick Fury. It's quite an exciting lineup!
+*Latency: 4601ms*
+------------------------------
+**TURN 4**
+USER: Search for a trailer or release date for any of those.
+ASSISTANT:
+Here's what I found regarding the trailers and release dates:
 
-Turn 5
-User: Great, thanks. I will try one of those tonight.
-Agent: You're welcome! I hope you enjoy your movie night. If you ever need more suggestions or have any questions, just let me know!
-Recommendations:
+- **The Marvels**: The official trailer is available, and the movie was released in theaters on November 10, 2023. It's set to come to Disney+ on February 7, 2024.
 
-1
+- **Killers of the Flower Moon**: There's a full trailer out, and the movie had its wide release on October 20, 2023.
 
-Test Case: Existing LLM-Redial user with RAG
-model_type: rag
-user_id: A2NBOL825B93OM
-known profile hints: liked The Bourne Identity, Master and Commander: The Far Side of the World, The Lord of the Rings: The Fellowship of the Ring; disliked Driven VHS and Darkness Falls VHS.
+- **The Exorcist: Believer**: The trailer is out, and it was released in theaters on October 6, 2023.
 
-Turn 1
-User: I want something exciting, but not as ridiculous as Driven. I liked The Bourne Identity because it stayed tense without feeling dumb.
-Agent: **The Bourne Legacy** - It maintains the tense, grounded action you enjoyed in "The Bourne Identity" without veering into ridiculous territory.
-Recommendations: The Bourne Legacy
+- **Taylor Swift: The Eras Tour**: The official trailer for "The Final Show" is available, and the film is set to release on December 12, 2025.
 
-Turn 2
-User: Can you recommend something that fits that?
-Agent: **Master and Commander: The Far Side of the World** - It offers intense adventure and drama on the high seas, balancing excitement with a serious tone that aligns well with your taste in "The Bourne Identity."
-Recommendations: Master and Commander: The Far Side of the World
+If you want to watch any of these trailers, they should be available on platforms like YouTube or the respective movie's official sites.
+EXTRACTED RECS: ['The Marvels', 'Killers of the Flower Moon', 'The Exorcist: Believer', 'Taylor Swift: The Eras Tour']
+*Latency: 19833ms*
+------------------------------
 
-Turn 3
-User: I already liked Fellowship, so that makes sense. Is it more fantasy than action?
-Agent: It's definitely more of an epic fantasy, but it has plenty of action woven throughout. If you're looking for something that balances both fantasy and excitement, I can suggest a couple of titles that might fit!
-Recommendations: 
-
-Turn 4
-User: What if I want something stranger and darker, but not cheap horror?
-Agent: **Dread: After Dark Horrorfest 4** - It explores darker themes and psychological horror, which might provide the strange and intense experience you're looking for without feeling like cheap horror.
-Recommendations: Dread: After Dark Horrorfest 4
-
-Turn 5
-User: Good. That is enough for now, thanks.
-Agent: You're welcome! If you ever want to chat about movies or need more recommendations, just let me know. Enjoy your day!
-Recommendations:
-
-2
-
-Test Case: New user with Agent
-model_type: agent
-user_id: demo-agent-new
-
-Turn 1
-User: Hey, I just watched The Screaming Skull and the print quality was awful. The acting felt grade Z too.
-Agent: It sounds like that was quite an experience! Some older films can have really questionable quality and performances. Did you watch it for a specific reason, like a film challenge or just curiosity?
-Recommendations: 
-
-Turn 2
-User: I still want something eerie, just better made. Any ideas?
-Agent: **Paranormal Activity** - This film offers a modern eerie atmosphere with a gripping storyline and much better production quality. 
-
-**Reincarnation: After Dark Horrorfest** - A horror film that promises a haunting narrative with a more polished execution than what you experienced. 
-
-**The Devil's Undead (aka "Nothing But The Night")** - This title combines eerie elements with a better-crafted storyline, perfect for your mood.
-Recommendations: Paranormal Activity, Reincarnation: After Dark Horrorfest, The Devil's Undead (aka "Nothing But The Night")
-
-Turn 3
-User: I like slow-burn horror, but I do not want anything too confusing.
-Agent: **Premonition j Horror Lic.** - This film offers a slow-burn experience with a clear narrative that keeps you engaged without becoming confusing. 
-
-**Autopsy: After Dark Horrorfest III** - A well-crafted horror tale that unfolds gradually, maintaining a straightforward plot for easy viewing. 
-
-**Timeless Horror - Movies 4 You** - This title blends eerie elements with a slow pace and clear storytelling, perfect for your preferences. 
-
-**Reincarnation: After Dark Horrorfest** - A great choice for a slow-burn horror that is unsettling yet easy to follow. 
-
-**Dread: After Dark Horrorfest 4** - It provides a creeping sense of horror without losing clarity in its plot progression.
-Recommendations: Premonition j Horror Lic., Autopsy: After Dark Horrorfest III, Timeless Horror - Movies 4 You, Reincarnation: After Dark Horrorfest, Dread: After Dark Horrorfest 4
-
-Turn 4
-User: Is that closer to ghost story or slasher?
-Agent: It leans more towards ghost story with a psychological edge. Would you prefer a haunting tale or something with more suspense and thrill?
-Recommendations: 
-
-Turn 5
-User: Perfect. Thanks, goodbye.
-Agent: You're welcome! Enjoy your movie time!
-Recommendations:
-
-3
-
-Test Case: Existing LLM-Redial user with Agent
-model_type: agent
-user_id: AQP1VPK16SVWM
-known profile hints: liked Stir Of Echoes, Quatermass &amp; The Pit VHS, The Incredibles (Mandarin Chinese Edition), The Three Musketeers/The Four Musketeers VHS; disliked Apollo 18, Primer, Eraserhead, The Colony.
-
-Turn 1
-User: I want something suspenseful, but please avoid anything like Apollo 18 or Primer. I did not enjoy those.
-Agent: **Hammer Films: The Icons of Suspense Collection** - This collection features classic thrillers that will keep you on the edge of your seat.  
-
-**Moon Phase: The Complete Collection** - A suspenseful series that delves into intriguing mysteries and supernatural themes.  
-
-**Mission: Impossible: The 5 Movie Collection** - Packed with thrilling action and suspenseful plots, this series is sure to engage you.
-Recommendations: Hammer Films: The Icons of Suspense Collection, Moon Phase: The Complete Collection, Mission: Impossible: The 5 Movie Collection
-
-Turn 2
-User: Can you recommend one movie from that angle?
-Agent: **Saw 1-7 Movie Collection** - This collection is filled with suspenseful twists and psychological thrills that will keep you guessing.
-Recommendations: Saw 1-7 Movie Collection
-
-Turn 3
-User: I already liked that one. Give me a different direction but still with mystery.
-Agent: **Mystery Classics V.13** - A collection of classic mysteries that will engage your curiosity and love for the genre.  
-
-**The Inspector Lynley Mysteries - Series 6** - This series offers intriguing detective work and compelling storylines filled with mystery.  
-
-**Inner Sanctum Mysteries - The Complete Movie Collection** - A classic collection of suspenseful tales that will draw you into their eerie mysteries.  
-
-**Murdoch Mysteries, Season One** - This series combines historical elements with clever mysteries that will captivate you.  
-
-**Archie's Weird Mysteries - The Complete Series** - A fun twist on mystery with supernatural elements that adds a unique flavor to the genre.
-Recommendations: Mystery Classics V.13, The Inspector Lynley Mysteries - Series 6, Inner Sanctum Mysteries - The Complete Movie Collection, Murdoch Mysteries, Season One, Archie's Weird Mysteries - The Complete Series
-
-Turn 4
-User: What if I want something lighter after that?
-Agent: **Heavy Metal VHS (1981)** - A unique animated film that combines fantasy and adventure with a lighter tone and eclectic storytelling.  
-
-**Dead Weight (2018)** - An imaginative animated tale with a quirky take on social interactions and personal expectations, offering a lighter perspective.  
-
-**Dark Shadows: The Beginning, Collection 1** - A fun blend of gothic elements and humor that provides a lighter take on the mystery genre.  
-
-**Darker Than Black: Starter Set** - While it has some darker themes, the overall tone can be lighter with its intriguing characters and unique storytelling.  
-
-**The Skin I Live In (2011)** - Though it has suspense, it includes elements of dark humor that can provide a lighter viewing experience.
-Recommendations: Heavy Metal VHS (1981), Dead Weight (2018), Dark Shadows: The Beginning, Collection 1, Darker Than Black: Starter Set, The Skin I Live In (2011)
-
-Turn 5
-User: Great. That gives me a nice mix. Thanks.
-Agent: You're welcome! Enjoy your movie time!
-Recommendations:
+================================================================================

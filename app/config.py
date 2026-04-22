@@ -17,12 +17,14 @@ class Settings(BaseSettings):
     
     # LLM Configuration
     openai_api_key: Optional[str] = None
-    llm_model: str = "gpt-4o-mini"
+    tavily_api_key: Optional[str] = None
+    llm_model_main: str = "gpt-4o"
+    llm_model_utility: str = "gpt-4o-mini"
     temperature: float = 0.7
-    max_tokens: int = 350
+    max_tokens: int = 2000
     
     # Embedding Configuration
-    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_model: str = "text-embedding-3-large"
     vector_store_type: str = "chroma"
     vector_store_path: str = "./data/vector_store"
     
@@ -33,12 +35,13 @@ class Settings(BaseSettings):
     
     # Performance Configuration
     max_concurrent_requests: int = 10
-    request_timeout: int = 30
+    request_timeout: int = 120
     
-    def get_llm_config(self) -> dict:
+    def get_llm_config(self, model_type: str = "main") -> dict:
         """Get LLM configuration dictionary."""
+        model = self.llm_model_main if model_type == "main" else self.llm_model_utility
         return {
-            "model": self.llm_model,
+            "model": model,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }

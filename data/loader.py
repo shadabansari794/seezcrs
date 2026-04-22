@@ -47,6 +47,7 @@ class MovieDataLoader:
         self.user_ids: Dict[str, int] = {}
         self.user_data: Dict[str, Dict[str, Any]] = {}
         self.tmdb_enriched_data: Dict[str, Dict[str, Any]] = {}
+        self.conversation_transcripts: Dict[str, str] = {}
         self.known_directors: set[str] = set()
         self.known_cast: set[str] = set()
         
@@ -108,6 +109,7 @@ class MovieDataLoader:
         # Load conversations if available
         if self.conversations_jsonl_path and Path(self.conversations_jsonl_path).exists():
             self._load_conversations()
+            self._load_conversation_transcripts()
 
         # Load user_ids map if available
         if self.user_ids_path and Path(self.user_ids_path).exists():
@@ -255,6 +257,32 @@ class MovieDataLoader:
         self.user_data = user_data
         logger.info(f"Loaded {len(conversations)} conversation records across {len(user_data)} users")
 
+    def _load_conversation_transcripts(self) -> None:
+        """Parse Conversation.txt into a dict keyed by conversation ID string."""
+        if not self.conversations_txt_path or not Path(self.conversations_txt_path).exists():
+            return
+        logger.info(f"Loading conversation transcripts from {self.conversations_txt_path}")
+
+        current_id = None
+        current_lines = []
+        
+        with open(self.conversations_txt_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line_stripped = line.strip()
+                if line_stripped.isdigit():
+                    if current_id is not None and current_lines:
+                        self.conversation_transcripts[current_id] = "\n".join(current_lines).strip()
+                    current_id = line_stripped
+                    current_lines = []
+                else:
+                    if current_id is not None and line_stripped:
+                        current_lines.append(line.rstrip())
+        
+        if current_id is not None and current_lines:
+            self.conversation_transcripts[current_id] = "\n".join(current_lines).strip()
+        
+        logger.info(f"Loaded {len(self.conversation_transcripts)} conversation transcripts")
+
     def get_user_history(self, user_id: str, max_items: int = 10) -> Dict[str, Any]:
         """
         Return a compact view of a user's past preferences, resolved to titles.
@@ -281,11 +309,24 @@ class MovieDataLoader:
 
         recent_likes: List[str] = []
         recent_dislikes: List[str] = []
+        full_history = []
         for conv_entry in reversed(payload.get("Conversation", [])):
             # Each entry is wrapped as {"conversation_N": {user_likes, user_dislikes, ...}}
-            for inner in conv_entry.values():
+            for conv_key, inner in conv_entry.items():
                 recent_likes.extend(to_titles(inner.get("user_likes", [])))
                 recent_dislikes.extend(to_titles(inner.get("user_dislikes", [])))
+                
+                # Build rich history item for the agent tools
+                conv_id = conv_key.replace("conversation_", "")
+                hist_item = {
+                    "id": conv_key,
+                    "likes": to_titles(inner.get("user_likes", [])),
+                    "dislikes": to_titles(inner.get("user_dislikes", [])),
+                    "rec_items": to_titles(inner.get("rec_item", [])),
+                    "transcript": self.conversation_transcripts.get(conv_id, "")
+                }
+                full_history.append(hist_item)
+                
             if len(recent_likes) >= max_items and len(recent_dislikes) >= max_items:
                 break
 
@@ -295,6 +336,7 @@ class MovieDataLoader:
             "recent_likes": recent_likes[:max_items],
             "recent_dislikes": recent_dislikes[:max_items],
             "historical_sample": historical_sample,
+            "full_history": full_history,
         }
     
     def get_conversation_examples(self, n: int = 5) -> List[str]:
