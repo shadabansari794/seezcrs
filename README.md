@@ -12,14 +12,18 @@ and server-side conversation memory keyed by `user_id`.
 
 ```text
 POST /recommend
+POST /recommend/stream
   request:  {"query": "...", "user_id": "...", "model_type": "rag" | "agent"}
   server:   resolve history by user_id
             select RAG or Agent recommender
             retrieve/search movies when needed
             call OpenAI chat model
             append turn to memory
-  response: {"response_text": "...", "recommendations": [...], ...}
+  response: {"response_text": "...", "recommendations": [...], ...} (or streamed chunks)
 ```
+
+**New Interactive Frontend:**
+The system also includes a Streamlit UI component `app_streamlit.py` which provides a rich, web-based chat experience, visualizing internal reasoning steps and rendering streaming responses in real-time.
 
 ## Dataset
 
@@ -46,6 +50,8 @@ Data limitations are reflected in the implementation:
 |   |-- main.py              FastAPI app, startup lifecycle, endpoints, memory store
 |   |-- schemas.py           Pydantic request/response models
 |   `-- config.py            Env-driven settings
+|-- app_streamlit.py         Interactive Streamlit chat frontend
+|-- Assignment_Report.md     Project academic submission report
 |-- models/
 |   |-- rag/
 |   |   |-- recommender.py   RAG coordinator class
@@ -56,12 +62,18 @@ Data limitations are reflected in the implementation:
 |   `-- agent/
 |       |-- recommender.py   Agent coordinator class
 |       |-- graph.py         LangGraph construction
+|       |-- intent.py        LLM intent classification
+|       |-- nodes.py         LangGraph execution nodes
 |       |-- tools.py         Agentic tools: IMDb, Web Search, User History
-|       |-- messages.py      Prompt/message assembly
 |       `-- state.py         AgentState definition
 |-- prompts/
 |   `-- templates.py         Shared RAG and Agent prompt templates
+|-- scripts/
+|   |-- eval_retrieval.py    Retrieval accuracy evaluations
+|   `-- ...                  Assorted test & generate scripts
 |-- utils/
+|   |-- reasoning.py         Reasoning logs & evaluation tools
+|   |-- reranker.py          Cross-Encoder Re-ranker
 |   `-- vector_store.py      ChromaDB + SentenceTransformer wrapper
 |-- data/
 |   |-- loader.py            LLM-Redial loader and user profile helpers
@@ -85,9 +97,9 @@ from models.agent import AgentRecommender
 ## Architecture
 
 ```text
-Client
-  |
+Client (Web / Streamlit UI)
   | POST /recommend
+  | POST /recommend/stream
   v
 FastAPI app
   |
@@ -244,6 +256,9 @@ docker compose up -d --force-recreate
 docker logs -f movie-crs-api
 ```
 
+Once running, access the **interactive Streamlit frontend**:
+- Open **http://localhost:8501** in your browser.
+
 Docker Compose defaults `LLM_MODEL` to `gpt-4o-mini` when it is not set.
 
 ### Local Virtual Environment
@@ -378,6 +393,10 @@ Response:
   "processing_time_ms": 1843.12
 }
 ```
+
+### `POST /recommend/stream`
+
+Same request configuration as `/recommend`, heavily utilized by the Streamlit frontend. It returns a `text/plain` stream chunk by chunk, ensuring very low perceived latency for the user. Evaluated internal logic (Reasoner Steps) runs seamlessly alongside and can be tailed from `/app/logs/reasoning.log`.
 
 ## Example Requests
 

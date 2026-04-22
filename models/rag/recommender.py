@@ -14,6 +14,7 @@ from openai import AsyncOpenAI
 
 from app.config import settings
 from app.schemas import Message, MovieRecommendation
+from utils.reasoning import log_reasoning_step, clear_reasoning_log
 from data.loader import MovieDataLoader
 from prompts.templates import PromptTemplates
 from utils.vector_store import MovieVectorStore
@@ -161,22 +162,30 @@ class RAGRecommender:
     ) -> AsyncGenerator[str, None]:
         """Stream conversational recommendations for real-time low-latency UI."""
         logger.info(f"[RAG-Stream] start user_id={user_id!r}")
+        clear_reasoning_log()
+        log_reasoning_step("Analyzing query")
         
         from models.query_rewrite import rewrite_query
         rewritten_query = await rewrite_query(self.llm_utility, query, history)
+        log_reasoning_step("Classifying intent")
+        
         intent = await classify_intent(self.llm_utility, rewritten_query, history)
         
         profile_text, retrieval_boost = self._build_user_profile_block(user_id)
         
         if intent != INTENT_RECOMMEND:
+            log_reasoning_step("Chatting")
             retrieved_movies: List[Dict[str, Any]] = []
         else:
+            log_reasoning_step("Searching catalog")
             retrieval_query = f"{rewritten_query} {retrieval_boost}".strip() if retrieval_boost else rewritten_query
             filters = extract_filters(rewritten_query, loader=self.movie_loader)
             retrieved_movies = await self._retrieve_relevant_movies(retrieval_query, top_k=max_recommendations * 4, filters=filters)
             if self.reranker and retrieved_movies:
+                log_reasoning_step("Ranking candidates")
                 retrieved_movies = self.reranker.rerank(rewritten_query, retrieved_movies, top_k=max_recommendations)
 
+        log_reasoning_step("Generating response")
         conv_history = self._format_conversation_history(history)
         if profile_text:
             conv_history = f"{profile_text}\n\n{conv_history}"

@@ -40,6 +40,7 @@ COPY data/ ./data/
 COPY prompts/ ./prompts/
 COPY utils/ ./utils/
 COPY scripts/ ./scripts/
+COPY app_streamlit.py .
 
 # Create necessary directories
 RUN mkdir -p data/vector_store logs

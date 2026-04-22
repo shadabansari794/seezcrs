@@ -26,7 +26,7 @@ class MovieVectorStore:
     
     def __init__(
         self,
-        embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+        embedding_model: str = "text-embedding-3-large",
         persist_directory: str = "./data/vector_store",
         collection_name: str = "movies"
     ):

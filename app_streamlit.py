@@ -9,7 +9,25 @@ from pathlib import Path
 # --- CONFIGURATION ---
 API_URL = os.getenv("API_URL", "http://localhost:8000/recommend")
 STREAM_URL = API_URL + "/stream"
-TRACE_PATH = Path("/app/logs/pipeline_trace.txt")  # Shared volume in Docker
+TRACE_PATH = Path("/app/logs/pipeline_trace.txt")  
+REASONING_PATH = Path("/app/logs/reasoning.log")
+ENRICHED_DATA_PATH = Path("/app/data/llm_redial/tmdb_enriched_movies.json")
+
+# --- DATA CACHING ---
+@st.cache_data
+def load_movie_metadata():
+    if ENRICHED_DATA_PATH.exists():
+        try:
+            with open(ENRICHED_DATA_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                # Handle both dict and list structures
+                movies = data.values() if isinstance(data, dict) else data
+                return {m["title"].lower(): m for m in movies if isinstance(m, dict) and "title" in m}
+        except Exception as e:
+            st.error(f"Error loading metadata: {e}")
+    return {}
+
+MOVIE_LOOKUP = load_movie_metadata()
 
 # --- PAGE SETUP ---
 st.set_page_config(
@@ -23,51 +41,96 @@ st.markdown("""
 <style>
     /* Global Styles */
     .stApp {
-        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-        color: white;
+        background-color: #0b0d11;
+        color: #ffffff;
     }
     
-    /* Sidebar glassmorphism */
-    section[data-testid="stSidebar"] {
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(10px);
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    /* Force high visibility on all text */
+    p, span, label, div, .stMarkdown, .stChatFloatingInputContainer {
+        color: #ffffff !important;
+        font-weight: 500 !important;
     }
 
+    /* Sidebar labels and controls */
+    section[data-testid="stSidebar"] {
+        background-color: #161922 !important;
+        border-right: 1px solid #30333d;
+    }
+    
+    section[data-testid="stSidebar"] label, section[data-testid="stSidebar"] p {
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        font-size: 1.1rem !important;
+    }
+
+    /* Clear History Button styling with high specificity */
+    [data-testid="stSidebar"] div.stButton > button {
+        background-color: #ff4b4b !important;
+        color: white !important;
+        border: 2px solid rgba(255, 255, 255, 0.2) !important;
+        font-weight: 900 !important;
+        width: 100% !important;
+        margin-top: 15px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    /* Titles */
+    h1, h2, h3 {
+        color: #00d2ff !important;
+        font-weight: 800 !important;
+    }
+    h1 { font-size: 2.2rem !important; }
+    
     /* Movie Card Styling */
     .movie-card {
-        background: rgba(255, 255, 255, 0.05);
+        background: #1c202a;
         border-radius: 12px;
-        padding: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 15px;
+        border: 1px solid #3d4251;
         margin-bottom: 20px;
         height: 100%;
     }
     .movie-title {
-        font-weight: bold;
-        color: #00d2ff;
-        font-size: 1.1rem;
-        margin-bottom: 5px;
-    }
-    .movie-meta {
-        font-size: 0.85rem;
-        color: #94bbe9;
-        margin-bottom: 10px;
+        font-weight: 900;
+        color: #00d2ff !important;
+        font-size: 1.2rem;
+        margin-bottom: 8px;
     }
     
     /* Chat bubbling */
     .stChatMessage {
-        background: rgba(255, 255, 255, 0.03) !important;
-        border-radius: 15px !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        background-color: #171b26 !important;
+        border: 1px solid #303541 !important;
+        margin-bottom: 12px !important;
+    }
+    
+    /* Reasoning Timeline */
+    .reasoning-step {
+        background: rgba(0, 210, 255, 0.1);
+        border-left: 3px solid #00d2ff;
+        padding: 10px;
+        margin-bottom: 12px;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        color: #00d2ff !important;
+        font-weight: 600 !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # --- UTILS ---
 def parse_recs_simple(text):
-    """Fallback parser for movie titles in bold **Title** format."""
     return re.findall(r"\*\*(.*?)\*\*", text)
+
+def get_reasoning_steps():
+    if REASONING_PATH.exists():
+        try:
+            with open(REASONING_PATH, "r", encoding="utf-8") as f:
+                return f.readlines()
+        except Exception:
+            return []
+    return []
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -89,21 +152,24 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.subheader("🕵️ Reasoning Trace")
+    st.subheader("🕵️ Reasoning Steps")
+    reasoning_container = st.empty()
     
-    # Trace viewer
-    if st.checkbox("Show real-time reasoning", value=True):
-        trace_container = st.empty()
-        if TRACE_PATH.exists():
-            with open(TRACE_PATH, "r") as f:
-                lines = f.readlines()[-20:] # Last 20 lines
-                trace_container.code("".join(lines), language="text")
+    def update_reasoning_ui():
+        steps = get_reasoning_steps()
+        if steps:
+            content = ""
+            for step in steps[-8:]: # Last 8 steps
+                content += f'<div class="reasoning-step">{step.strip()}</div>'
+            reasoning_container.markdown(content, unsafe_allow_html=True)
         else:
-            trace_container.info("Awaiting first interaction...")
+            reasoning_container.info("Awaiting first interaction...")
+    
+    update_reasoning_ui()
 
 # --- CHAT INTERFACE ---
 st.title("🍿 Conversational Recommender")
-st.caption("A premium AI experience for discovering your next favorite movie. Now with real-time streaming.")
+st.caption("A premium AI experience for discovering your next favorite movie.")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -116,14 +182,18 @@ for message in st.session_state.messages:
             recs = message["recommendations"]
             if recs:
                 cols = st.columns(min(len(recs), 4))
-                for idx, rec in enumerate(recs):
+                for idx, title in enumerate(recs):
                     with cols[idx % 4]:
-                        title = rec if isinstance(rec, str) else rec.get('title')
-                        poster_url = "https://via.placeholder.com/500x750?text=" + title.replace(" ", "+")
+                        meta = MOVIE_LOOKUP.get(title.lower(), {})
+                        poster_path = meta.get("poster_path")
+                        poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else "https://via.placeholder.com/500x750?text=" + title.replace(" ", "+")
+                        year = meta.get("release_date", "")[:4]
+                        rating = meta.get("vote_average", "N/A")
                         st.markdown(f"""
                         <div class="movie-card">
                             <img src="{poster_url}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;">
                             <div class="movie-title">{title}</div>
+                            <div class="movie-meta" style="color: #888888; font-size: 0.8rem;">{year} • ⭐ {rating}</div>
                         </div>
                         """, unsafe_allow_html=True)
 
@@ -144,15 +214,17 @@ if prompt := st.chat_input("Ask for a recommendation..."):
                 "model_type": model_type
             }
             
-            # Use requests with stream=True for the new /stream endpoint
             with requests.post(STREAM_URL, json=payload, stream=True, timeout=120) as r:
                 r.raise_for_status()
                 for chunk in r.iter_content(chunk_size=None, decode_unicode=True):
                     if chunk:
                         full_response += chunk
                         response_container.markdown(full_response + "▌")
+                        # Real-time reasoning update
+                        update_reasoning_ui()
             
             response_container.markdown(full_response)
+            update_reasoning_ui() # Final reasoning catch-up
             
             # Parse recommendations for card display
             found_titles = parse_recs_simple(full_response)
@@ -162,11 +234,13 @@ if prompt := st.chat_input("Ask for a recommendation..."):
                 cols = st.columns(min(len(found_titles), 4))
                 for idx, title in enumerate(found_titles):
                     with cols[idx % 4]:
-                        poster_url = "https://via.placeholder.com/500x750?text=" + title.replace(" ", "+")
+                        meta = MOVIE_LOOKUP.get(title.lower(), {})
+                        year = meta.get("release_date", "")[:4]
+                        rating = meta.get("vote_average", "N/A")
                         st.markdown(f"""
                         <div class="movie-card">
-                            <img src="{poster_url}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;">
                             <div class="movie-title">{title}</div>
+                            <div class="movie-meta" style="color: #888888; font-size: 0.8rem;">{year} • ⭐ {rating}</div>
                         </div>
                         """, unsafe_allow_html=True)
 

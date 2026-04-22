@@ -18,8 +18,11 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langgraph.prebuilt import create_react_agent
 
+from app.schemas import Message
+from utils.reasoning import log_reasoning_step
 from data.loader import MovieDataLoader
 from models.agent.intent import classify_intent
 from models.agent.state import AgentState
@@ -28,7 +31,6 @@ from models.rag.filters import extract_filters
 from models.query_rewrite import rewrite_query
 from prompts.templates import PromptTemplates
 from utils.vector_store import MovieVectorStore
-from langgraph.prebuilt import create_react_agent
 
 logger = logging.getLogger(__name__)
 
@@ -75,12 +77,14 @@ def build_nodes(
 
     async def rewrite_query_node(state: AgentState) -> Dict[str, Any]:
         query = state.get("current_query", "")
+        log_reasoning_step("✍️ Improving query", f"Analyzing '{query[:30]}...'")
         history = state.get("history") or []
         rewritten = await rewrite_query(llm_intent, query, history)
         return {"rewritten_query": rewritten}
 
     async def classify_intent_node(state: AgentState) -> Dict[str, Any]:
         query = state.get("current_query", "")
+        log_reasoning_step("🧠 Classifying intent", "Determining how to best help you...")
         history = state.get("history") or []
         intent = await classify_intent(llm_intent, query, history)
         return {"intent": intent}
@@ -88,6 +92,7 @@ def build_nodes(
     def extract_preferences_node(state: AgentState) -> Dict[str, Any]:
         rewritten = state.get("rewritten_query") or state.get("current_query", "")
         user_id = state.get("user_id")
+        log_reasoning_step("📋 Extracting filters", "Looking for specific genres, actors, or eras you mentioned.")
 
         filters = extract_filters(rewritten, loader=movie_loader)
         user_history = movie_loader.get_user_history(user_id) if user_id else {}
@@ -110,6 +115,7 @@ def build_nodes(
         filters = prefs.get("filters") or {}
         max_recs = state.get("max_recommendations") or 5
         top_k = max(max_recs * 2, 6)
+        log_reasoning_step("🔍 Searching deep", "Scanning the movie database with your preferences.")
 
         candidates = vector_store.search(query, top_k=top_k, **filters)
         logger.info(
@@ -173,6 +179,7 @@ def build_nodes(
     async def chat_reply_node(state: AgentState) -> Dict[str, Any]:
         intent = state.get("intent", "chat")
         query = state.get("current_query", "")
+        log_reasoning_step("💬 Chat Mode", "Replying to your message directly using agent tools.")
         history_str = _history_to_string(state.get("history") or [])
 
         # Build the full prompt text from the template

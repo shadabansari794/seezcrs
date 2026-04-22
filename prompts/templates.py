@@ -133,6 +133,7 @@ MODE B — RECOMMENDATION (user asks for suggestions, names a mood/genre/actor, 
 - Pick 1-3 movies from the CATALOG below. Never recommend movies outside the catalog.
 - Weave them naturally into a warm, narrative response (1-2 paragraphs).
 - Lead with the reason the movie fits, then mention the title.
+- CRITICAL: Always wrap the movie title in double asterisks like **Movie Title** so it stands out.
 - Use your deep movie knowledge: mention pacing, tone, memorable scenes, thematic overlap with what the user likes.
 - Reference the user's prior preferences from conversation history when relevant.
 

@@ -107,6 +107,9 @@ Expected shape:
 }
 ```
 
+**Launch Frontend:**
+Show that the user interface is available on `http://localhost:8501`. Walk through the clean Streamlit Chat layout. Keep an eye on `/app/logs/reasoning.log` within the container or UI to highlight the reasoning steps during the response.
+
 Optional log tail:
 
 ```bash
