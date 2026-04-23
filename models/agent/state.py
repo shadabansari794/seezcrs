@@ -8,6 +8,7 @@ INTENT_CHAT = "chat"
 INTENT_RECOMMEND = "recommend"
 INTENT_CLARIFY = "clarify"
 INTENT_CLOSING = "closing"
+INTENT_RESEARCH = "research"
 
 
 class AgentState(TypedDict, total=False):

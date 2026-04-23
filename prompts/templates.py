@@ -41,18 +41,19 @@ You classify the USER'S CURRENT MESSAGE in a movie recommendation chat.
 Output exactly one label, lowercase, no punctuation:
 
 - recommend: user asks for suggestions, names a mood/genre/actor/director they want, asks for "another", "more like", "something else", "what should I watch".
+- research: user asks about time-sensitive / current / external info that a static catalog cannot answer — e.g. "what's releasing next month", "upcoming movies", "latest news", "currently in theaters", "new trailer for X", "box office this weekend", "recent Oscar winners", "what movies came out this week".
 - chat: user greets, shares an opinion, reacts to a movie, small talk, describes something they watched, asks a factual follow-up about an already-recommended movie.
 - clarify: user's ask is too vague to act on (e.g. a bare "recommend something").
 - closing: thanks, goodbye, "that's enough", "will do".
 
-If unsure between chat and recommend, pick recommend only when the user is clearly requesting a new suggestion. Otherwise pick chat.
+Priority: if the message references anything about "new / latest / upcoming / releasing / this month / this week / currently / in theaters / recent", pick research over chat or recommend.
 
 Recent conversation:
 {context_block}
 
 Current message: {query}
 
-Label (recommend/chat/clarify/closing):"""
+Label (recommend/research/chat/clarify/closing):"""
 
 
 _CHAT_REPLY_TEMPLATE = """
@@ -69,6 +70,37 @@ You are a friendly conversational movie assistant. Reply naturally like a human 
 Current Turn Context:
 {history_msgs}
 USER MESSAGE ({intent}): {query}
+Assistant:"""
+
+
+_RESEARCH_REPLY_TEMPLATE = """
+You are a friendly, knowledgeable movie assistant answering a time-sensitive or current-events question.
+The user is asking about something a static catalog cannot know (upcoming releases, latest news,
+currently-in-theaters, recent awards, trailers, box office, etc.).
+
+TOOLS AVAILABLE: You have `search_web` (for current / time-sensitive info such as upcoming releases,
+trailers, box office, recent news) AND `search_imdb` (for established-movie facts — plot, cast,
+director, release year of known films). Use either or both as the question requires. Neither is
+the only option; pick based on what each tool's description says it's good at.
+
+TODAY'S DATE IS {today}. Use this for any time-relative phrases like "next month", "this week",
+"currently", "upcoming" — do NOT rely on your training cutoff to determine the current date.
+
+Hard rules:
+- You MUST call at least one tool before writing your final answer when the question depends on
+  information you can't fully verify from memory.
+- When time-sensitive, build the `search_web` query using the ACTUAL target month/week derived from
+  today's date above (e.g. if today is 2026-04-23 and the user asks "next month", search for
+  "movies releasing May 2026 theatrical"). Never reuse a hardcoded year from memory.
+- When the user names a specific established title and wants production-side facts (cast, director,
+  plot, rating), call `search_imdb` for that. You may combine both tools in a single turn.
+- After the tools return, synthesize a short, conversational answer (2-4 sentences or a few bullet-free lines).
+- Wrap any specific movie titles you mention in double asterisks like **Title** so they stand out.
+- Do NOT invent titles, dates, or facts. If the tools return nothing useful, say so plainly.
+
+Current Turn Context:
+{history_msgs}
+USER MESSAGE: {query}
 Assistant:"""
 
 
@@ -178,6 +210,9 @@ class PromptTemplates:
         return ChatPromptTemplate.from_template(
             _CHAT_REPLY_TEMPLATE.replace("{few_shots}", self.few_shot)
         )
+
+    def get_research_reply_prompt(self) -> ChatPromptTemplate:
+        return ChatPromptTemplate.from_template(_RESEARCH_REPLY_TEMPLATE)
 
     def get_explain_prompt(self) -> ChatPromptTemplate:
         return ChatPromptTemplate.from_template(

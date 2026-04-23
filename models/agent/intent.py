@@ -16,12 +16,13 @@ from models.agent.state import (
     INTENT_CLARIFY,
     INTENT_CLOSING,
     INTENT_RECOMMEND,
+    INTENT_RESEARCH,
 )
 from prompts.templates import PromptTemplates
 
 logger = logging.getLogger(__name__)
 
-VALID_INTENTS = {INTENT_CHAT, INTENT_RECOMMEND, INTENT_CLARIFY, INTENT_CLOSING}
+VALID_INTENTS = {INTENT_CHAT, INTENT_RECOMMEND, INTENT_CLARIFY, INTENT_CLOSING, INTENT_RESEARCH}
 
 
 async def classify_intent(

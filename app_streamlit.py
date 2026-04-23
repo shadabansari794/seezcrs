@@ -204,13 +204,10 @@ for message in st.session_state.messages:
                 for idx, title in enumerate(recs):
                     with cols[idx % 4]:
                         meta = MOVIE_LOOKUP.get(title.lower(), {})
-                        poster_path = meta.get("poster_path")
-                        poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else "https://via.placeholder.com/500x750?text=" + title.replace(" ", "+")
                         year = meta.get("release_date", "")[:4]
                         rating = meta.get("vote_average", "N/A")
                         st.markdown(f"""
                         <div class="movie-card">
-                            <img src="{poster_url}" style="width: 100%; border-radius: 8px; margin-bottom: 10px;">
                             <div class="movie-title">{title}</div>
                             <div class="movie-meta" style="color: #888888; font-size: 0.8rem;">{year} • ⭐ {rating}</div>
                         </div>

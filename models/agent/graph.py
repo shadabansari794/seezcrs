@@ -28,6 +28,7 @@ from models.agent.state import (
     INTENT_CLARIFY,
     INTENT_CLOSING,
     INTENT_RECOMMEND,
+    INTENT_RESEARCH,
     AgentState,
 )
 
@@ -38,6 +39,8 @@ def _route_from_intent(state: AgentState) -> str:
     intent = state.get("intent") or INTENT_RECOMMEND
     if intent == INTENT_RECOMMEND:
         return "extract_preferences"
+    if intent == INTENT_RESEARCH:
+        return "research"
     return "chat_reply"
 
 
@@ -55,6 +58,7 @@ def create_agent_graph(nodes: Dict[str, Callable]) -> Any:
         "rank_score",
         "explain",
         "chat_reply",
+        "research",
     }
     missing = required - set(nodes)
     if missing:
@@ -69,6 +73,7 @@ def create_agent_graph(nodes: Dict[str, Callable]) -> Any:
     workflow.add_node("rank_score", nodes["rank_score"])
     workflow.add_node("explain", nodes["explain"])
     workflow.add_node("chat_reply", nodes["chat_reply"])
+    workflow.add_node("research", nodes["research"])
 
     workflow.set_entry_point("rewrite_query")
     workflow.add_edge("rewrite_query", "classify_intent")
@@ -78,6 +83,7 @@ def create_agent_graph(nodes: Dict[str, Callable]) -> Any:
         _route_from_intent,
         {
             "extract_preferences": "extract_preferences",
+            "research": "research",
             "chat_reply": "chat_reply",
         },
     )
@@ -87,10 +93,12 @@ def create_agent_graph(nodes: Dict[str, Callable]) -> Any:
     workflow.add_edge("rank_score", "explain")
     workflow.add_edge("explain", END)
     workflow.add_edge("chat_reply", END)
+    workflow.add_edge("research", END)
 
     logger.info(
-        "[Agent.graph] compiled nodes=%s entry=classify_intent intents=%s",
+        "[Agent.graph] compiled nodes=%s entry=rewrite_query intents=%s",
         sorted(required),
-        [INTENT_CHAT, INTENT_RECOMMEND, INTENT_CLARIFY, INTENT_CLOSING],
+        [INTENT_CHAT, INTENT_RECOMMEND, INTENT_CLARIFY, INTENT_CLOSING, INTENT_RESEARCH],
     )
     return workflow.compile()
+

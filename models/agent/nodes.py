@@ -16,13 +16,13 @@ retrieval + ranking tokens on them.
 from __future__ import annotations
 
 import logging
+from datetime import date
 from typing import Any, Callable, Dict, List, Optional
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.prebuilt import create_react_agent
 
 from app.schemas import Message
-from utils.reasoning import log_reasoning_step
 from data.loader import MovieDataLoader
 from models.agent.intent import classify_intent
 from models.agent.state import AgentState
@@ -119,7 +119,6 @@ def build_nodes(
         boost = prefs.get("retrieval_boost") or ""
         max_recs = state.get("max_recommendations") or 5
         top_k = max(max_recs * 2, 6)
-        log_reasoning_step("🔍 Retrieving from db")
 
         retrieval_query = f"{query} {boost}".strip() if boost else query
         candidates = vector_store.search(retrieval_query, top_k=top_k, **filters)
@@ -161,36 +160,26 @@ def build_nodes(
         )
 
         logger.info(
-            "[Agent.explain] ranked=%d history_turns=%d tools_available=True",
+            "[Agent.explain] ranked=%d history_turns=%d",
             len(ranked), len(state.get("history") or []) // 2,
         )
-        
-        tools = get_tools()
-        # Pass the full prompt as the agent's system prompt so tone rules survive
-        agent = create_react_agent(llm_main, tools=tools, prompt=full_prompt_text)
-        
-        response_state = await agent.ainvoke({"messages": [HumanMessage(content=query)]})
-        
-        for msg in response_state["messages"]:
-            if getattr(msg, "tool_calls", None):
-                for tc in msg.tool_calls:
-                    logger.info(f"[Agent.explain] 🛠️ LLM decided to use tool '{tc.get('name')}' with args: {tc.get('args')}")
-                    
-        final_message = response_state["messages"][-1]
-        content = getattr(final_message, "content", "") or ""
+
+        # Direct LLM call — lets outer astream_events capture token stream.
+        response_msg = await llm_main.ainvoke(
+            [SystemMessage(content=full_prompt_text), HumanMessage(content=query)]
+        )
+        content = getattr(response_msg, "content", "") or ""
         return {
             "response_text": content,
-            "messages": [final_message],
+            "messages": [response_msg],
         }
 
 
     async def chat_reply_node(state: AgentState) -> Dict[str, Any]:
         intent = state.get("intent", "chat")
         query = state.get("current_query", "")
-        log_reasoning_step("💬 Chat Mode", "Replying to your message directly using agent tools.")
         history_str = _history_to_string(state.get("history") or [])
 
-        # Build the full prompt text from the template
         prompt_template = prompt_templates.get_chat_reply_prompt()
         full_prompt_text = prompt_template.format(
             history_msgs=history_str,
@@ -199,20 +188,45 @@ def build_nodes(
         )
 
         logger.info(
-            "[Agent.chat_reply] intent=%s history_turns=%d tools_available=True",
+            "[Agent.chat_reply] intent=%s history_turns=%d",
             intent, len(state.get("history") or []) // 2,
         )
-        
+
+        response_msg = await llm_main.ainvoke(
+            [SystemMessage(content=full_prompt_text), HumanMessage(content=query)]
+        )
+        content = getattr(response_msg, "content", "") or ""
+        return {
+            "response_text": content,
+            "messages": [response_msg],
+        }
+
+
+    async def research_node(state: AgentState) -> Dict[str, Any]:
+        query = state.get("current_query", "")
+        history_str = _history_to_string(state.get("history") or [])
+
+        research_prompt = prompt_templates.get_research_reply_prompt().format(
+            history_msgs=history_str,
+            query=query,
+            today=date.today().isoformat(),
+        )
+
+        logger.info(
+            "[Agent.research] history_turns=%d tools_available=True",
+            len(state.get("history") or []) // 2,
+        )
+
         tools = get_tools()
-        # Pass the full prompt as the agent's system prompt so tone rules survive
-        agent = create_react_agent(llm_main, tools=tools, prompt=full_prompt_text)
-        
+        agent = create_react_agent(llm_main, tools=tools, prompt=research_prompt)
         response_state = await agent.ainvoke({"messages": [HumanMessage(content=query)]})
-        
+
         for msg in response_state["messages"]:
             if getattr(msg, "tool_calls", None):
                 for tc in msg.tool_calls:
-                    logger.info(f"[Agent.chat_reply] 🛠️ LLM decided to use tool '{tc.get('name')}' with args: {tc.get('args')}")
+                    logger.info(
+                        f"[Agent.research] 🛠️ LLM used tool '{tc.get('name')}' with args: {tc.get('args')}"
+                    )
 
         final_message = response_state["messages"][-1]
         content = getattr(final_message, "content", "") or ""
@@ -220,7 +234,6 @@ def build_nodes(
             "response_text": content,
             "messages": [final_message],
         }
-
 
     return {
         "rewrite_query": rewrite_query_node,
@@ -230,4 +243,5 @@ def build_nodes(
         "rank_score": rank_score_node,
         "explain": explain_node,
         "chat_reply": chat_reply_node,
+        "research": research_node,
     }

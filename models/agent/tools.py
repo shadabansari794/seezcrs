@@ -19,8 +19,9 @@ if settings.tavily_api_key:
 @tool
 def search_imdb(movie_title: str) -> str:
     """
-    Search IMDb for comprehensive movie details such as plot, cast, and directors.
-    Use this if a user asks a factual question about a movie.
+    Look up *established* movie details — plot, cast, director, release year, IMDb rating.
+    Best when the user names a specific known film and wants biographical or production facts.
+    Does NOT have current box-office numbers, upcoming release schedules, or news.
     """
     try:
         logger.info(f"[Tool] Searching IMDb for: {movie_title}")
@@ -47,8 +48,10 @@ def search_imdb(movie_title: str) -> str:
 @tool
 def search_web(query: str) -> str:
     """
-    Perform a general web search.
-    Use this to find latest news or information not covered by the IMDb tool.
+    Live web search for *current* or *time-sensitive* info: upcoming releases,
+    what's in theaters now, latest trailers, this week's box office, recent awards,
+    breaking film news. Use whenever the question depends on facts newer than
+    well-established film history.
     """
     if not tavily_tool:
         return "Web search is not configured (TAVILY_API_KEY missing)."
