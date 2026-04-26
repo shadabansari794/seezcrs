@@ -5,7 +5,7 @@ retrieval → ranking → explanation) and short-circuits chit-chat/clarify/clos
 turns to a single conversational reply node. See ``models/agent/graph.py``.
 """
 
-from typing import AsyncGenerator, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 import logging
 
 from langchain_openai import ChatOpenAI
@@ -26,6 +26,55 @@ from models.rag.parser import parse_recommendations as parse_recommendations_tex
 logger = logging.getLogger(__name__)
 
 REASON_PING = "\x1e"
+
+
+def _preview(text: Any, limit: int = 400) -> str:
+    s = str(text or "")
+    return s if len(s) <= limit else s[:limit] + "…"
+
+
+def _candidate_summary(movie: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "title": movie.get("title"),
+        "year": movie.get("year"),
+        "genres": movie.get("genres") or [],
+        "score": movie.get("score") or movie.get("rerank_score"),
+    }
+
+
+def _summarize_node_update(node_name: str, update: Any, query: str) -> Dict[str, Any]:
+    """Build an expandable payload for the reasoning UI from a node update."""
+    update = update or {}
+    data: Dict[str, Any] = {"input": {"query": query}}
+
+    if node_name == "rewrite_query":
+        data["output"] = {"rewritten_query": update.get("rewritten_query")}
+    elif node_name == "classify_intent":
+        data["output"] = {"intent": update.get("intent")}
+    elif node_name == "extract_preferences":
+        prefs = update.get("preferences") or {}
+        data["output"] = {
+            "filters": prefs.get("filters"),
+            "retrieval_boost": prefs.get("retrieval_boost"),
+            "has_profile": bool(prefs.get("profile_text")),
+        }
+    elif node_name == "retrieve":
+        candidates = update.get("candidates") or []
+        data["output"] = {
+            "count": len(candidates),
+            "candidates": [_candidate_summary(c) for c in candidates[:10]],
+        }
+    elif node_name == "rank_score":
+        ranked = update.get("ranked") or []
+        data["output"] = {
+            "count": len(ranked),
+            "ranked": [_candidate_summary(c) for c in ranked],
+        }
+    elif node_name in {"explain", "chat_reply", "research"}:
+        data["output"] = {"response_preview": _preview(update.get("response_text"))}
+    else:
+        data["output"] = {k: _preview(v, 200) for k, v in update.items()}
+    return data
 
 
 class AgentRecommender:
@@ -141,7 +190,10 @@ class AgentRecommender:
         }
         terminal_nodes = {"explain", "chat_reply", "research"}
 
-        log_reasoning_step("Processing request")
+        log_reasoning_step(
+            "Processing request",
+            data={"input": {"query": query, "user_id": user_id, "history_turns": len(history or [])}},
+        )
         yield REASON_PING
 
         async for mode, event_data in self.graph.astream(
@@ -149,10 +201,12 @@ class AgentRecommender:
             stream_mode=["updates", "messages"],
         ):
             if mode == "updates":
-                for node_name in event_data.keys():
-                    if node_name in node_reason_steps:
-                        log_reasoning_step(node_reason_steps[node_name])
-                        yield REASON_PING
+                for node_name, update in event_data.items():
+                    if node_name not in node_reason_steps:
+                        continue
+                    data = _summarize_node_update(node_name, update, query)
+                    log_reasoning_step(node_reason_steps[node_name], data=data)
+                    yield REASON_PING
             elif mode == "messages":
                 chunk, metadata = event_data
                 if metadata.get("langgraph_node") not in terminal_nodes:

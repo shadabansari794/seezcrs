@@ -61,7 +61,7 @@ def clean_title_for_search(title: str) -> str:
     for pattern in _FORMAT_PATTERNS:
         cleaned = re.sub(pattern, " ", cleaned, flags=re.I)
     cleaned = re.sub(r"\s+", " ", cleaned)
-    return cleaned.strip(" -:/")
+    return cleaned.strip(" -:/") 
 
 
 def load_item_map(path: Path) -> Dict[str, str]:

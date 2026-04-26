@@ -165,45 +165,118 @@ class RAGRecommender:
         """Stream conversational recommendations for real-time low-latency UI."""
         logger.info(f"[RAG-Stream] start user_id={user_id!r}")
         clear_reasoning_log()
-        log_reasoning_step("Analyzing query")
+        log_reasoning_step(
+            "Processing request",
+            data={"input": {"query": query, "user_id": user_id, "history_turns": len(history or [])}},
+        )
         yield REASON_PING
 
         from models.query_rewrite import rewrite_query
         rewritten_query = await rewrite_query(self.llm_utility, query, history)
-        log_reasoning_step("Classifying intent")
+        log_reasoning_step(
+            "Rewrote query",
+            data={"input": {"query": query}, "output": {"rewritten_query": rewritten_query}},
+        )
         yield REASON_PING
 
         intent = await classify_intent(self.llm_utility, rewritten_query, history)
+        log_reasoning_step(
+            "Classified intent",
+            data={"input": {"query": rewritten_query}, "output": {"intent": intent}},
+        )
+        yield REASON_PING
 
         profile_text, retrieval_boost = self._build_user_profile_block(user_id)
 
         if intent != INTENT_RECOMMEND:
-            log_reasoning_step("Chatting")
+            log_reasoning_step(
+                "Generated reply",
+                data={"input": {"query": query, "intent": intent}, "output": {"path": "chat short-circuit (no retrieval)"}},
+            )
             yield REASON_PING
             retrieved_movies: List[Dict[str, Any]] = []
         else:
-            log_reasoning_step("Searching catalog")
-            yield REASON_PING
-            retrieval_query = f"{rewritten_query} {retrieval_boost}".strip() if retrieval_boost else rewritten_query
             filters = extract_filters(rewritten_query, loader=self.movie_loader)
-            retrieved_movies = await self._retrieve_relevant_movies(retrieval_query, top_k=max_recommendations * 4, filters=filters)
-            if self.reranker and retrieved_movies:
-                log_reasoning_step("Ranking candidates")
-                yield REASON_PING
-                retrieved_movies = self.reranker.rerank(rewritten_query, retrieved_movies, top_k=max_recommendations)
+            log_reasoning_step(
+                "Extracted filters",
+                data={
+                    "input": {"query": rewritten_query},
+                    "output": {
+                        "filters": filters,
+                        "retrieval_boost": retrieval_boost,
+                        "has_profile": bool(profile_text),
+                    },
+                },
+            )
+            yield REASON_PING
 
-        log_reasoning_step("Generating response")
-        yield REASON_PING
+            retrieval_query = f"{rewritten_query} {retrieval_boost}".strip() if retrieval_boost else rewritten_query
+            retrieved_movies = await self._retrieve_relevant_movies(retrieval_query, top_k=max_recommendations * 4, filters=filters)
+            log_reasoning_step(
+                "Retrieved candidates",
+                data={
+                    "input": {"query": retrieval_query, "filters": filters, "top_k": max_recommendations * 4},
+                    "output": {
+                        "count": len(retrieved_movies),
+                        "candidates": [
+                            {
+                                "title": m.get("title"),
+                                "year": m.get("year"),
+                                "genres": m.get("genres") or [],
+                            }
+                            for m in retrieved_movies[:10]
+                        ],
+                    },
+                },
+            )
+            yield REASON_PING
+
+            if self.reranker and retrieved_movies:
+                retrieved_movies = self.reranker.rerank(rewritten_query, retrieved_movies, top_k=max_recommendations)
+                log_reasoning_step(
+                    "Ranked candidates",
+                    data={
+                        "input": {"query": rewritten_query, "candidates_in": len(retrieved_movies)},
+                        "output": {
+                            "count": len(retrieved_movies),
+                            "ranked": [
+                                {
+                                    "title": m.get("title"),
+                                    "year": m.get("year"),
+                                    "genres": m.get("genres") or [],
+                                    "score": m.get("rerank_score") or m.get("score"),
+                                }
+                                for m in retrieved_movies
+                            ],
+                        },
+                    },
+                )
+                yield REASON_PING
+
         conv_history = self._format_conversation_history(history)
         if profile_text:
             conv_history = f"{profile_text}\n\n{conv_history}"
 
         chat_prompt = self.prompt_templates.get_rag_prompt()
+        movies_context = PromptTemplates.format_movies_context(retrieved_movies[:max_recommendations])
         messages = chat_prompt.format_messages(
             conversation_history=conv_history or "No previous conversation.",
-            movies_context=PromptTemplates.format_movies_context(retrieved_movies[:max_recommendations]),
+            movies_context=movies_context,
             user_query=query,
         )
+
+        log_reasoning_step(
+            "Generating response",
+            data={
+                "input": {
+                    "query": query,
+                    "candidates_in_prompt": len(retrieved_movies[:max_recommendations]),
+                    "has_user_profile": bool(profile_text),
+                },
+                "output": {"status": "streaming tokens..."},
+            },
+        )
+        yield REASON_PING
 
         response = await self.client.chat.completions.create(
             model=settings.llm_model_main,
@@ -212,9 +285,20 @@ class RAGRecommender:
             max_tokens=settings.max_tokens,
             stream=True
         )
+        full_response_parts: List[str] = []
         async for chunk in response:
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+            content = chunk.choices[0].delta.content
+            if content:
+                full_response_parts.append(content)
+                yield content
+
+        full_response = "".join(full_response_parts)
+        preview = full_response if len(full_response) <= 400 else full_response[:400] + "…"
+        log_reasoning_step(
+            "Generated response",
+            data={"input": {"query": query}, "output": {"response_preview": preview, "length": len(full_response)}},
+        )
+        yield REASON_PING
 
     def parse_recommendations(self, response_text: str) -> List[MovieRecommendation]:
         """Parse structured recommendations from response text."""

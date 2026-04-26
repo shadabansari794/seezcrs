@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
             conversations_txt_path=str(data_dir / "Conversation.txt"),
             user_ids_path=str(user_ids_file) if user_ids_file.exists() else None,
             tmdb_enriched_path=str(data_dir / "tmdb_enriched_movies.json"),
-        )
+        ) 
     else:
         logger.warning("LLM-Redial dataset not found, using sample data")
         logger.info("To use actual dataset, run: python load_dataset.py")

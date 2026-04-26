@@ -116,6 +116,43 @@ st.markdown("""
         color: #00d2ff !important;
         font-weight: 600 !important;
     }
+    details.reasoning-step {
+        padding: 0;
+        overflow: hidden;
+    }
+    details.reasoning-step > summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 8px 12px;
+        color: #00d2ff !important;
+        font-weight: 700 !important;
+        user-select: none;
+    }
+    details.reasoning-step > summary::-webkit-details-marker { display: none; }
+    details.reasoning-step > summary::before {
+        content: "▸";
+        display: inline-block;
+        margin-right: 6px;
+        transition: transform 0.15s ease-in-out;
+    }
+    details.reasoning-step[open] > summary::before { transform: rotate(90deg); }
+    details.reasoning-step .reasoning-ts {
+        color: #7a8191 !important;
+        font-weight: 500 !important;
+        font-size: 0.8rem;
+        margin-right: 6px;
+    }
+    details.reasoning-step pre {
+        margin: 0;
+        padding: 10px 12px;
+        background: rgba(0, 0, 0, 0.35);
+        color: #d7f7ff !important;
+        font-size: 0.78rem;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        word-break: break-word;
+        border-top: 1px solid rgba(0, 210, 255, 0.25);
+    }
 
     /* Movie title highlight inside assistant prose */
     .movie-name {
@@ -135,13 +172,48 @@ def highlight_titles(text):
     return re.sub(r"\*\*(.*?)\*\*", r'<span class="movie-name">\1</span>', text)
 
 def get_reasoning_steps():
-    if REASONING_PATH.exists():
-        try:
-            with open(REASONING_PATH, "r", encoding="utf-8") as f:
-                return f.readlines()
-        except Exception:
-            return []
-    return []
+    """Return a list of reasoning entries as dicts: {ts, step, detail, data}."""
+    if not REASONING_PATH.exists():
+        return []
+    entries = []
+    try:
+        with open(REASONING_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entries.append(json.loads(line))
+                except json.JSONDecodeError:
+                    entries.append({"ts": "", "step": line, "detail": "", "data": {}})
+    except Exception:
+        return []
+    return entries
+
+
+def _escape_html(s):
+    return (
+        str(s)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
+def render_reasoning_entry(entry):
+    step = _escape_html(entry.get("step", ""))
+    ts = _escape_html(entry.get("ts", ""))
+    detail = _escape_html(entry.get("detail", "") or "")
+    data = entry.get("data") or {}
+    body = json.dumps(data, indent=2, ensure_ascii=False, default=str) if data else ""
+    body_html = f"<pre>{_escape_html(body)}</pre>" if body else ""
+    detail_html = f" — {detail}" if detail else ""
+    return (
+        f'<details class="reasoning-step">'
+        f'<summary><span class="reasoning-ts">{ts}</span>{step}{detail_html}</summary>'
+        f"{body_html}"
+        f"</details>"
+    )
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -172,11 +244,9 @@ with st.sidebar:
     reasoning_container = st.empty()
     
     def update_reasoning_ui():
-        steps = get_reasoning_steps()
-        if steps:
-            content = ""
-            for step in steps[-8:]: # Last 8 steps
-                content += f'<div class="reasoning-step">{step.strip()}</div>'
+        entries = get_reasoning_steps()
+        if entries:
+            content = "".join(render_reasoning_entry(e) for e in entries[-10:])
             reasoning_container.markdown(content, unsafe_allow_html=True)
         else:
             reasoning_container.info("Awaiting first interaction...")

@@ -1,48 +1,61 @@
 import logging
-import json
-from typing import List, Any
+from typing import Any, List
 
 from langchain_core.tools import tool
-from imdb import Cinemagoer
 from langchain_community.tools.tavily_search import TavilySearchResults
 
 from app.config import settings
+from scripts.test_tmdb_lookup import (
+    get_movie_details,
+    search_movie,
+    to_needed_keys,
+)
 
 logger = logging.getLogger(__name__)
 
-ia = Cinemagoer()
 tavily_tool = None
 if settings.tavily_api_key:
     tavily_tool = TavilySearchResults(max_results=3, tavily_api_key=settings.tavily_api_key)
 
 
 @tool
-def search_imdb(movie_title: str) -> str:
+def search_tmdb(movie_title: str) -> str:
     """
-    Look up *established* movie details — plot, cast, director, release year, IMDb rating.
-    Best when the user names a specific known film and wants biographical or production facts.
-    Does NOT have current box-office numbers, upcoming release schedules, or news.
+    Look up *established* movie details from The Movie Database — plot/overview,
+    director, cast, release year, genres, and keywords. Best when the user names a
+    specific known film and wants production-side facts (who's in it, who directed,
+    when it came out, what it's about).
+
+    Does NOT have current box-office numbers, upcoming-release schedules, news, or
+    trailers — use `search_web` for those.
     """
     try:
-        logger.info(f"[Tool] Searching IMDb for: {movie_title}")
-        results = ia.search_movie(movie_title)
-        if not results:
-            return f"No IMDb results found for '{movie_title}'."
+        logger.info(f"[Tool] Searching TMDB for: {movie_title}")
+        hit = search_movie(movie_title, year=None)
+        details = get_movie_details(hit["id"])
+        needed = to_needed_keys(details, cast_limit=5, keyword_limit=10)
 
-        movie = results[0]
-        ia.update(movie)
+        title = needed.get("title") or movie_title
+        year = needed.get("year") or "?"
+        director = ", ".join(needed.get("director") or []) or "Unknown"
+        cast = ", ".join(needed.get("cast") or []) or "Unknown"
+        genres = ", ".join(needed.get("genres") or []) or "Unknown"
+        keywords = ", ".join(needed.get("keywords") or []) or ""
+        overview = needed.get("overview") or "No overview available."
 
-        title = movie.get('title', '')
-        year = movie.get('year', '')
-        plot = movie.get('plot', ['No plot available'])[0]
-        director = ", ".join([d.get('name', '') for d in movie.get('directors', [])])
-        cast = ", ".join([c.get('name', '') for c in movie.get('cast', [])[:5]])
-        rating = movie.get('rating', 'N/A')
-
-        return f"Title: {title} ({year})\nRating: {rating}/10\nDirector: {director}\nCast: {cast}\nPlot: {plot}"
+        lines = [
+            f"Title: {title} ({year})",
+            f"Genres: {genres}",
+            f"Director: {director}",
+            f"Cast: {cast}",
+        ]
+        if keywords:
+            lines.append(f"Keywords: {keywords}")
+        lines.append(f"Overview: {overview}")
+        return "\n".join(lines)
     except Exception as e:
-        logger.error(f"[Tool] IMDb search failed: {e}")
-        return f"Failed to retrieve IMDb info: {e}"
+        logger.error(f"[Tool] TMDB search failed: {e}")
+        return f"No TMDB results found for '{movie_title}': {e}"
 
 
 @tool
@@ -66,4 +79,4 @@ def search_web(query: str) -> str:
 
 def get_tools() -> List[Any]:
     """Return the static list of agent tools."""
-    return [search_imdb, search_web]
+    return [search_tmdb, search_web]
