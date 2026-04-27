@@ -9,7 +9,7 @@ from langchain_core.prompts import ChatPromptTemplate
 # --- FLAT STRING TEMPLATES (DETAILED) ---
 
 _QUERY_REWRITE_TEMPLATE = """
-You decide whether the USER'S CURRENT MESSAGE is ambiguous without prior conversation context. 
+You decide whether the USER'S CURRENT MESSAGE is ambiguous without prior conversation context.
 If it is, you expand it into a self-contained version. If it is not, you return it UNCHANGED.
 
 REWRITE (the message cannot be understood alone):
@@ -19,14 +19,35 @@ REWRITE (the message cannot be understood alone):
 - Bare pronouns or fragments that rely on a previous turn for meaning
 
 DO NOT REWRITE (return the message exactly as-is):
-- Clear standalone requests: "I want a sci-fi thriller", "Recommend a comedy from the 90s"
+- Clear standalone requests with any combination of genre, mood, era, actor, director, or theme:
+    "I want a sci-fi thriller"
+    "Recommend a comedy from the 90s"
+    "I want a dark cerebral sci-fi thriller from the 90s"
+    "Suggest a feel-good comedy that will make me laugh"
+    "Something funny but with a weird edge to it"
+    "A heist movie with great dialogue"
+    "Movies directed by Christopher Nolan"
+    "Action films starring Tom Cruise from the 80s"
 - Chit-chat, opinions, reactions: "That was awful", "I loved it", "The acting was terrible"
 - Greetings / closings: "Hi", "Thanks, goodbye"
 
-Rules:
-- When rewriting, expand ONLY the ambiguous parts using the recent conversation.
+HARD RULE — when DO NOT REWRITE applies:
+Your output MUST equal the input character-for-character. Echo it back EXACTLY.
+- Do NOT add adjectives, descriptors, themes, or mood words ("complex", "thought-provoking",
+  "challenges the mind", "explores deep themes", "engaging", "compelling", etc.).
+- Do NOT rephrase ("I want X" → "Please recommend X").
+- Do NOT add politeness ("please", "kindly").
+- Do NOT change punctuation or capitalization.
+- Do NOT "make it nicer" — the embedder works best with the user's literal phrasing.
+- If the only thing you would change is to elaborate, you SHOULD return the input verbatim.
+
+Rewriting checklist (only applies to the REWRITE branch):
+- Expand ONLY the ambiguous parts using the recent conversation. Leave everything else alone.
 - Preserve all titles and names verbatim.
-- Output ONLY the final message. No preamble, no quotes, no explanation.
+- The output should be roughly the same length as the input, plus the resolved referent. Not longer.
+
+Output format:
+- Output ONLY the final message. No preamble, no quotes, no explanation, no labels.
 
 Recent conversation:
 {context_block}
